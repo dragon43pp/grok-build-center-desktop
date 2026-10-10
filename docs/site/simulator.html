@@ -48,12 +48,7 @@
   <section class="hero">
     <p class="kicker" data-i18n="hero.kicker">Interactive demo</p>
     <h1 data-i18n="hero.title">Six sessions. One of them needs you.</h1>
-    <p class="lede" data-i18n="hero.lede">
-      Everything on this page is invented — the sessions, the paths, the token counts, the
-      timestamps. What is not invented is the mechanism: press play and watch a single
-      agent event travel through the four stages that turn it into a status, and watch one
-      session begin asking for you.
-    </p>
+    <p class="lede" data-i18n="hero.lede">Everything on this page is invented — the sessions, the turn counts, the token counts, the timestamps. What is not invented is the mechanism: press play and watch a single agent event travel through the four stages that turn it into a status, and watch one session begin asking for you.</p>
     <p class="hero-note" data-i18n="hero.note">
       Coral means one thing only: this session is blocked on your confirmation. It is the
       only colour in the product that glows.
@@ -78,9 +73,7 @@
         <p class="panel-label" data-i18n="sim.pipeline">Event pipeline</p>
 
         <div class="sources" id="sources"></div>
-        <p class="sources-note" data-i18n="sim.sourcesNote">
-          Six of the eight event sources the contract allows.
-        </p>
+        <p class="sources-note" data-i18n="sim.sourcesNote">Six of the eight event sources the contract allows. The contract additionally has fixture, which exists only in tests, and the platform adds lifecycle for processes it started itself.</p>
         <div class="wire-down" aria-hidden="true"></div>
 
         <ol class="stages" id="stages">
@@ -138,20 +131,17 @@
       says so with a confidence flag instead of inventing a seventh state.
     </p>
     <ul class="legend" id="legend"></ul>
-    <p class="legend-note" data-i18n="legend.note"></p>
+    <p class="legend-note" data-i18n="legend.note">Exited is deliberately not an error: a process that ended cleanly is a different fact from one that failed, and the difference is what tells you whether to intervene.</p>
   </section>
 
   <section class="blocks" aria-labelledby="caps-heading">
     <h2 id="caps-heading" data-i18n="caps.title">What each agent can actually report</h2>
-    <p class="section-lede" data-i18n="caps.lede">
-      Harnesses are not equally observable. These levels are not demo data — they are the
-      capabilities the adapters declare in the source, for the session in front of you.
-    </p>
+    <p class="section-lede" data-i18n="caps.lede">Harnesses are not equally observable. Every level below is declared in the source — electron/agents/adapters/*/types.ts for the six harnesses, and electron/dsh-host/DshProjectionBridge.ts for DeepSeek Harness — rather than invented for this page.</p>
     <div class="table-wrap">
       <table class="caps" id="caps"></table>
     </div>
-    <p class="caps-note" data-i18n="caps.headNote"></p>
-    <p class="caps-note" data-i18n="caps.note"></p>
+    <p class="caps-note" data-i18n="caps.headNote">Bar length is how deep that dimension goes. A full bar means this harness reaches the top level for that column.</p>
+    <p class="caps-note" data-i18n="caps.note">Read the right-hand columns first, because that is where the sources separate: OpenCode goes furthest overall and is the only one that reports message summaries, and Pi is the only one that reports tokens and context rather than a single number. Read the left-hand columns to see what every harness with a live path gets — a thinking phase and a tool lifecycle. Antigravity and WorkBuddy have no live path at all; they appear in session history only.</p>
   </section>
 
   <section class="blocks blocks-split">
@@ -159,7 +149,7 @@
       <h2 data-i18n="truth.title">What is real here, and what is not</h2>
       <ul class="truth">
         <li><strong data-i18n="truth.realLabel">Real:</strong> <span data-i18n="truth.real">the four pipeline stages, the six states, the event fields in the log (<span class="mono">seq</span>, <span class="mono">nativeId</span>, <span class="mono">observerHealth</span>, <span class="mono">statusConfidence</span>), the capability levels, and the degradation behaviour when an observer dies.</span></li>
-        <li><strong data-i18n="truth.fakeLabel">Fabricated:</strong> <span data-i18n="truth.fake">every session name, workspace path, timestamp, token count and cost. Nothing on this page contacted a CLI, and there is no backend.</span></li>
+        <li><strong data-i18n="truth.fakeLabel">Fabricated:</strong> <span data-i18n="truth.fake">every session name, turn count, timestamp, token count and cost. Nothing on this page contacted a CLI, there is no backend, and no file was read.</span></li>
         <li><strong data-i18n="truth.noneLabel">Not shown:</strong> <span data-i18n="truth.none">the terminal itself. In the real application the CLI keeps its native TUI in the main pane — the whole point is that ASC never parses those bytes.</span></li>
       </ul>
     </div>

@@ -45,171 +45,167 @@
 <main id="top">
 
   <section class="doc-hero">
-    <h1 data-i18n="pd.h1">Everything Agent Session Center does, and how</h1>
-    <p class="lede" data-i18n="pd.lede">
-      This page is the whole manual. It covers what the app is, the eight coding agents it
-      understands, how to install it on each platform, the permission model it can and
-      cannot observe, and where the source is published.
-    </p>
+    <h1 data-i18n="pd.h1">Documentation</h1>
+    <p class="lede" data-i18n="pd.lede">Agent Session Center (ASC) is an open-source desktop app for Windows, Linux and macOS. It gathers the session history of eight AI coding agents into one place: browse and search sessions, resume one in place, watch tokens and cost per agent, and push a permission prompt to your phone through Feishu.</p>
   </section>
 
   <div class="doc">
     <nav class="doc-toc" aria-labelledby="toc-heading">
-      <p class="doc-toc-title mono" id="toc-heading" data-i18n="pd.toc.title">Contents</p>
+      <p class="doc-toc-title mono" id="toc-heading" data-i18n="pd.toc.title">On this page</p>
       <ol>
-        <li><a href="#s1" data-i18n="pd.s1.title">What it is</a></li>
-        <li><a href="#s2" data-i18n="pd.s2.title">The eight agents</a></li>
+        <li><a href="#s1" data-i18n="pd.s1.title">What it is, and the problem it solves</a></li>
+        <li><a href="#s2" data-i18n="pd.s2.title">Which agents are supported</a></li>
         <li><a href="#s3" data-i18n="pd.s3.title">Install</a></li>
         <li><a href="#s4" data-i18n="pd.s4.title">First run</a></li>
-        <li><a href="#s5" data-i18n="pd.s5.title">The five screens</a></li>
-        <li><a href="#s6" data-i18n="pd.s6.title">Search</a></li>
-        <li><a href="#s7" data-i18n="pd.s7.title">Feishu approvals</a></li>
-        <li><a href="#s8" data-i18n="pd.s8.title">Privacy and data</a></li>
-        <li><a href="#s9" data-i18n="pd.s9.title">Source and contributing</a></li>
-        <li><a href="#s10" data-i18n="pd.s10.title">Troubleshooting</a></li>
+        <li><a href="#s5" data-i18n="pd.s5.title">What it does</a></li>
+        <li><a href="#s6" data-i18n="pd.s6.title">The boundary of one-click resume</a></li>
+        <li><a href="#s7" data-i18n="pd.s7.title">Data and privacy</a></li>
+        <li><a href="#s8" data-i18n="pd.s8.title">Troubleshooting</a></li>
+        <li><a href="#s9" data-i18n="pd.s9.title">Build from source, and contribute</a></li>
+        <li><a href="#s10" data-i18n="pd.s10.title">Frequently asked questions</a></li>
       </ol>
     </nav>
 
     <article class="doc-body">
 
       <section id="s1">
-        <h2 data-i18n="pd.s1.title">What it is</h2>
-        <p data-i18n="pd.s1.p1">Agent Session Center is a desktop application that gathers the sessions of several AI coding agents into one window. Each agent writes its history in its own format, in its own directory; ASC reads those event streams and projects them into a single, consistent list you can browse, search and resume from.</p>
-        <p data-i18n="pd.s1.p2">It does not run the agents, replace their terminal, or sit between you and the model. It observes the files they already write, and it opens the original terminal when you resume a session.</p>
+        <h2 data-i18n="pd.s1.title">What it is, and the problem it solves</h2>
+        <p data-i18n="pd.s1.p1">Different agents are good at different jobs, so one terminal quickly becomes several. Each CLI keeps its sessions in its own format, in its own directory. The friction is not starting an agent — it is finding the session again later. Two days on, you have to remember which CLI you used, which folder it ran in, and roughly when.</p>
+        <p data-i18n="pd.s1.p2">ASC reads the session history each CLI already writes to disk and shows it in one window. The CLI keeps its native terminal and does all the work; ASC adds the layer around it — live status, attention cues, a floating monitor and a read-only workspace viewer. It never parses the terminal. It reads the event streams and session files the CLIs already produce, then derives status from those events.</p>
       </section>
 
       <section id="s2">
-        <h2 data-i18n="pd.s2.title">The eight agents</h2>
-        <p data-i18n="pd.s2.p">Eight agents are supported. They are not equally observable, and the app says so rather than pretending otherwise.</p>
+        <h2 data-i18n="pd.s2.title">Which agents are supported</h2>
+        <p data-i18n="pd.s2.p">Eight coding agents appear in session history: Claude Code, Codex CLI, OpenCode, Grok Build, Kimi Code, Pi, Antigravity and WorkBuddy. Six of them also report live status while they run. DeepSeek Harness is read as well when its home directory is present, through its own projection channel.</p>
         <dl class="doc-agents">
           <dt data-i18n="pd.agents.r1.name">Claude Code</dt>
-          <dd data-i18n="pd.agents.r1.detail">Full session history, tool lifecycle, permission prompts and token usage.</dd>
+          <dd data-i18n="pd.agents.r1.detail">Official Hooks. Live status covers thinking, tools, approvals and completion. One-click resume.</dd>
           <dt data-i18n="pd.agents.r2.name">Codex CLI</dt>
-          <dd data-i18n="pd.agents.r2.detail">Session history and tool events, with token totals per turn.</dd>
+          <dd data-i18n="pd.agents.r2.detail">Stable Hooks. Turns, tools, approvals and compaction. One-click resume.</dd>
           <dt data-i18n="pd.agents.r3.name">OpenCode</dt>
-          <dd data-i18n="pd.agents.r3.detail">The deepest reader of the eight: history, tool lifecycle and message summaries.</dd>
+          <dd data-i18n="pd.agents.r3.detail">Server plus SSE. The deepest source: sessions, thinking, tools, questions and permissions, and the only one that reports message summaries. No verified resume command.</dd>
           <dt data-i18n="pd.agents.r4.name">Grok Build</dt>
-          <dd data-i18n="pd.agents.r4.detail">History and tool events; status falls back to low confidence when its observer goes quiet.</dd>
+          <dd data-i18n="pd.agents.r4.detail">Official Hooks. Turns, thinking, tools and approvals. One-click resume. It records its own cost in its usage file.</dd>
           <dt data-i18n="pd.agents.r5.name">Kimi Code</dt>
-          <dd data-i18n="pd.agents.r5.detail">History and tool events, with a thinking phase where the model reports one.</dd>
+          <dd data-i18n="pd.agents.r5.detail">Official Hooks. Turns, thinking, tools and approvals. No verified resume command.</dd>
           <dt data-i18n="pd.agents.r6.name">Pi</dt>
-          <dd data-i18n="pd.agents.r6.detail">History and tool events; reports tokens and context rather than a single number.</dd>
+          <dd data-i18n="pd.agents.r6.detail">Extension API. Thinking, responses, tools and turns. The only source that reports tokens and context together rather than a single number.</dd>
           <dt data-i18n="pd.agents.r7.name">Antigravity</dt>
-          <dd data-i18n="pd.agents.r7.detail">Session history only — it has no live event path, so it never shows a live status.</dd>
+          <dd data-i18n="pd.agents.r7.detail">Session history only. It exposes no live event stream, so it has no live status.</dd>
           <dt data-i18n="pd.agents.r8.name">WorkBuddy</dt>
-          <dd data-i18n="pd.agents.r8.detail">Session history only, like Antigravity; it appears in the list but reports no live state.</dd>
+          <dd data-i18n="pd.agents.r8.detail">Session history only. The most recent WorkBuddy session can be opened in the WorkBuddy client.</dd>
         </dl>
-        <p class="doc-note" data-i18n="pd.s2.note">These levels are not marketing tiers. Each one is declared in the adapters' source, and the app marks low confidence instead of guessing when an observer cannot be trusted.</p>
+        <p class="doc-note" data-i18n="pd.s2.note">Harnesses are not equally observable, and ASC does not pretend that they are. Each adapter declares what it can actually prove for the session in front of you, and the interface shows that level rather than a brand claim. The interactive demo carries the full capability matrix, column by column. The list below is the short version.</p>
       </section>
 
       <section id="s3">
         <h2 data-i18n="pd.s3.title">Install</h2>
-        <p data-i18n="pd.s3.p">The builds are unsigned. Download the file for your platform, verify its SHA-256 against the published value, and run it. There is no installer service and no background updater that phones home.</p>
+        <p data-i18n="pd.s3.p">Every build is self-contained and unsigned. Signatures are not available yet, so each operating system interrupts the first launch, and it is worth checking the published SHA-256 before you run an installer. The download page lists each file with its size and hash.</p>
         <ul class="doc-steps">
-          <li data-i18n="pd.s3.win">Windows: run the Setup .exe. It installs per user and needs no administrator rights.</li>
-          <li data-i18n="pd.s3.mac">macOS: open the .dmg and drag the app to Applications. Because it is unsigned, the first launch needs a right-click, Open.</li>
-          <li data-i18n="pd.s3.linux">Linux: install the .deb, or make the AppImage executable and run it. Both find the agents already on your machine.</li>
+          <li data-i18n="pd.s3.win">Windows 10 and 11 on x64 use the guided NSIS installer, which installs per-user to <span class="mono">%LOCALAPPDATA%\Programs\Agent Session Center</span> unless you choose Install for all users on its first page. Windows SmartScreen prompts once: choose More info, then Run anyway. The Start-menu shortcut is named ASC (Agent Session Center), so typing asc finds it.</li>
+          <li data-i18n="pd.s3.mac">macOS builds are unsigned and not notarized, so Gatekeeper blocks the first launch. On macOS 15 and later, open System Settings, go to Privacy &amp; Security, and choose Open Anyway after a blocked attempt; on macOS 10.14 through 14, right-click the app and choose Open. Drag the app from the disk image to Applications first.</li>
+          <li data-i18n="pd.s3.linux">On x64 Linux, the <span class="mono">.deb</span> installs with apt and the AppImage is portable: make it executable with <span class="mono">chmod +x</span> and run it. Linux packages carry no signature requirement, so there is no launch prompt. After it starts, let the initial CLI scan finish.</li>
         </ul>
         <p class="cta-row"><a class="btn btn-primary" href="./download.html" data-i18n="l.nav.download">Download</a></p>
       </section>
 
       <section id="s4">
         <h2 data-i18n="pd.s4.title">First run</h2>
-        <p data-i18n="pd.s4.p1">On launch, the app scans the standard directories for each agent and lists whatever it finds. The first scan takes a few seconds; after that it watches those directories and updates as sessions start, progress and finish.</p>
-        <p data-i18n="pd.s4.p2">Nothing is uploaded. The scan reads local files and keeps its index on your machine.</p>
+        <p data-i18n="pd.s4.p1">On first launch ASC scans the machine for compatible CLIs, on the host and in compatible WSL distributions, and caches the result so later startups are fast. The scan reads directories the CLIs already own and installs nothing. You can run a rescan from the app at any time.</p>
+        <p data-i18n="pd.s4.p2">The first scan takes seconds. Nothing leaves the machine: there is no account, no telemetry and no server of the project, and the session files stay where the CLIs put them. Afterwards, pick an agent, choose its runtime and workspace, and start the session — the native terminal runs in the main pane and ASC publishes its status around it.</p>
       </section>
 
       <section id="s5">
-        <h2 data-i18n="pd.s5.title">The five screens</h2>
-        <p data-i18n="pd.s5.p">The application is five views over the same data, reachable from the left rail.</p>
+        <h2 data-i18n="pd.s5.title">What it does</h2>
+        <p data-i18n="pd.s5.p">Five things, in the order a session moves through them.</p>
         <div class="doc-features">
           <div class="doc-feature">
-            <h3 data-i18n="pd.s5.f1.title">Session history</h3>
-            <p data-i18n="pd.s5.f1.body">Every session, from every agent, in one column — newest first, with status, workspace and agent.</p>
+            <h3 data-i18n="pd.s5.f1.title">Session history, in one table</h3>
+            <p data-i18n="pd.s5.f1.body">Every session from every supported agent, with workspace path, duration and status. Browse, search, hide, or send a session to the recycle bin. The underlying files are read-only and are never modified.</p>
           </div>
           <div class="doc-feature">
-            <h3 data-i18n="pd.s5.f2.title">AI search</h3>
-            <p data-i18n="pd.s5.f2.body">Describe what you were working on in plain language and get the session back.</p>
+            <h3 data-i18n="pd.s5.f2.title">AI search in plain language</h3>
+            <p data-i18n="pd.s5.f2.body">Describe what you remember — the task, a file, roughly when — and search narrows across every agent at once. You point ASC at your own OpenAI-compatible endpoint in Settings, and the desktop app calls it directly.</p>
           </div>
           <div class="doc-feature">
-            <h3 data-i18n="pd.s5.f3.title">Resume</h3>
-            <p data-i18n="pd.s5.f3.body">One click opens the original agent in its own terminal, in the right directory, with the conversation continued.</p>
+            <h3 data-i18n="pd.s5.f3.title">One-click resume</h3>
+            <p data-i18n="pd.s5.f3.body">Where a tested resume command exists, ASC reopens the session in its original working directory with the same session id. Where that directory is gone, it says so and asks you to pick another instead of failing silently.</p>
           </div>
           <div class="doc-feature">
-            <h3 data-i18n="pd.s5.f4.title">Usage</h3>
-            <p data-i18n="pd.s5.f4.body">Tokens and cost per agent per day, so a long session is not a surprise.</p>
+            <h3 data-i18n="pd.s5.f4.title">Tokens and cost, per agent</h3>
+            <p data-i18n="pd.s5.f4.body">Usage is aggregated from the records each CLI keeps and shown per agent and per model. Cost is shown when it is known — recorded by the agent itself, or priced from a model catalogue — and left out rather than guessed when it is not.</p>
           </div>
           <div class="doc-feature">
-            <h3 data-i18n="pd.s5.f5.title">Feishu</h3>
-            <p data-i18n="pd.s5.f5.body">When an agent blocks on a permission prompt, the request is pushed to your phone so you can approve it away from the desk.</p>
+            <h3 data-i18n="pd.s5.f5.title">Approvals on your phone, through Feishu</h3>
+            <p data-i18n="pd.s5.f5.body">Connect Feishu once with a QR scan. From then on, a session that stalls on a permission prompt sends a card you can act on from your phone; the decision returns to the same terminal, and the turn continues.</p>
           </div>
         </div>
       </section>
 
       <section id="s6">
-        <h2 data-i18n="pd.s6.title">Search</h2>
-        <p data-i18n="pd.s6.p1">Search has two modes. The plain one matches text in the sessions already indexed. The AI one embeds your question and ranks sessions by meaning, which is how you find a session when you remember the problem but not the words.</p>
-        <p data-i18n="pd.s6.p2">Both run against the local index. If you have configured a model provider, the AI mode uses it for the embedding step only.</p>
+        <h2 data-i18n="pd.s6.title">The boundary of one-click resume</h2>
+        <p data-i18n="pd.s6.p1">One-click resume is implemented for three agents: Claude Code, Codex CLI and Grok Build. Each of those commands was verified against the <span class="mono">--help</span> output of the CLI on a real machine before it was offered, and the button runs in the original working directory of the session with its original session id.</p>
+        <p data-i18n="pd.s6.p2">For every other agent the row still carries a resume button, but it is greyed out, and the reason is written on the button itself: the resume command of this CLI has not been verified on this machine, so it is not offered. A guessed command would start a new session in the wrong place and spend a turn, so the app states the gap rather than dressing an untested capability up as a working one. WorkBuddy is a partial exception: its most recent session can be opened in the WorkBuddy client.</p>
       </section>
 
       <section id="s7">
-        <h2 data-i18n="pd.s7.title">Feishu approvals</h2>
-        <p data-i18n="pd.s7.p1">Feishu is optional and off until you connect it. When it is on and an agent reaches a permission prompt, ASC sends you a card with the command and two buttons.</p>
-        <p data-i18n="pd.s7.p2">Approving the card answers the prompt in the session; the agent continues in its terminal. Declining sends the refusal instead. Either way the session itself never leaves your machine — only the question and your answer travel.</p>
-        <p data-i18n="pd.s7.p3">If Feishu is not connected, everything still works; the prompts simply wait in the terminal as they always did.</p>
+        <h2 data-i18n="pd.s7.title">Data and privacy</h2>
+        <p data-i18n="pd.s7.p1">ASC reads structured events, not the screen. Status comes from the official Hooks, SSE stream, extension API or runtime events of each CLI, never from parsing the terminal bytes. An observer can go quiet without stopping your session; when it does, ASC lowers the confidence it reports rather than guessing.</p>
+        <p data-i18n="pd.s7.p2">Nothing is uploaded to the project. There is no telemetry, no analytics, no crash reporting and no account. Session transcripts stay on the machine and are read only to build the list, total the usage and render a transcript you open.</p>
+        <p data-i18n="pd.s7.p3">The one automatic request is an update check against this project on GitHub Releases, which <span class="mono">ASC_DISABLE_UPDATES=1</span> turns off. The AI assistant and the Feishu integration are both off until you configure them, and the Feishu connection is your own self-built app on your own tenant, not a service of the project. The complete list of outbound requests is in PRIVACY.md.</p>
       </section>
 
       <section id="s8">
-        <h2 data-i18n="pd.s8.title">Privacy and data</h2>
+        <h2 data-i18n="pd.s8.title">Troubleshooting</h2>
         <details>
-          <summary data-i18n="pd.s8.q1">What does the app read?</summary>
-          <p data-i18n="pd.s8.a1">The session files and event streams the agents already write, in their standard directories. It does not read your terminal screen and does not attach to the running process.</p>
+          <summary data-i18n="pd.s8.q1">The window never appears — the app flashes and exits.</summary>
+          <p data-i18n="pd.s8.a1">The GPU process most likely cannot start. This happens with virtual displays installed by remote-control software, inside VMs, and with broken GPU drivers: Chromium retries the GPU process, gives up, and exits before a window exists. Start it once with the GPU sandbox disabled: <span class="mono">&amp; "$env:LOCALAPPDATA\Programs\Agent Session Center\Agent Session Center.exe" --no-sandbox</span>. Since v1.0.2 the app detects this itself and offers the same command; it never disables the GPU sandbox on its own.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s8.q2">What leaves my computer?</summary>
-          <p data-i18n="pd.s8.a2">By default, nothing. If you enable Feishu, only the permission question and your answer are sent to the Feishu service. If you enable AI search with a hosted provider, your query text is sent to that provider.</p>
+          <summary data-i18n="pd.s8.q2">Where does it write a log, and what is in it?</summary>
+          <p data-i18n="pd.s8.a2">The diagnostic log is at <span class="mono">%APPDATA%\Agent Session Center\logs\asc-diagnostic.jsonl</span>, and the same log is shown in Settings. A GPU-process failure is recorded there with its reason and exit code, which is the fastest way to tell a GPU problem from anything else.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s8.q3">Where is the index stored?</summary>
-          <p data-i18n="pd.s8.a3">In the application's own data directory, as a local database. Deleting that directory resets the app to a fresh scan.</p>
+          <summary data-i18n="pd.s8.q3">macOS blocks the app on first launch.</summary>
+          <p data-i18n="pd.s8.a3">The macOS build is unsigned and not notarized, so Gatekeeper stops it. On macOS 15 and later, try to open it once, then go to System Settings, Privacy &amp; Security, and choose Open Anyway; that button appears only after a blocked attempt. On macOS 10.14 through 14, right-click the app and choose Open. Removing the prompt for good would need notarization, which needs a paid Apple Developer Program membership this project does not have.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s8.q4">Is there telemetry?</summary>
-          <p data-i18n="pd.s8.a4">No. The app does not send usage statistics or crash reports anywhere.</p>
+          <summary data-i18n="pd.s8.q4">Windows or macOS warns that the file is unsigned.</summary>
+          <p data-i18n="pd.s8.a4">That is expected: no release is code-signed on any platform. Check the SHA-256 against the sidecar published beside the file on the download page, then allow it through — on Windows, More info and then Run anyway; on macOS, the Gatekeeper steps above. A matching hash proves the download is intact and is the file that was published; what it does not prove is who built it, which is the one thing a signature would add.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s8.q5">Can I point it at a custom directory?</summary>
-          <p data-i18n="pd.s8.a5">Yes. Each agent has a configurable root, so a non-standard install location can be added without moving files.</p>
+          <summary data-i18n="pd.s8.q5">The scan does not find a CLI I just installed.</summary>
+          <p data-i18n="pd.s8.a5">The CLI scan runs at startup and is cached, so a freshly installed CLI may be missing until you rescan. Install the CLI first, then run a rescan from the app; ASC does not install agents for you. Some agents also need a one-time confirmation — Codex, for example, asks you to review and trust the ASC hook before it reports status.</p>
         </details>
       </section>
 
       <section id="s9">
-        <h2 data-i18n="pd.s9.title">Source and contributing</h2>
-        <p data-i18n="pd.s9.p">Agent Session Center is open source under Apache-2.0. The source, the issue tracker and the contribution guide are in the repository.</p>
+        <h2 data-i18n="pd.s9.title">Build from source, and contribute</h2>
+        <p data-i18n="pd.s9.p">The desktop app lives at <span class="mono">github.com/fatedawn/agent-session-center</span>. Clone it, then run <span class="mono">npm install</span> and <span class="mono">npm run dev</span>; <span class="mono">npm run typecheck</span> and <span class="mono">npm run build</span> are the routine checks. Release packages must be built on their matching operating system through <span class="mono">npm run release:win</span>, <span class="mono">release:mac</span> and <span class="mono">release:linux</span>. Bug reports, reproducible edge cases and focused pull requests are welcome on GitHub; observer changes should come with a test that proves event ordering and fallback behavior. The project is Apache-2.0. This is the one section whose links point at GitHub.</p>
         <p class="cta-row"><a class="btn" href="https://github.com/fatedawn/agent-session-center" rel="noopener" data-i18n="try.repo">Read the source</a></p>
       </section>
 
       <section id="s10">
-        <h2 data-i18n="pd.s10.title">Troubleshooting</h2>
+        <h2 data-i18n="pd.s10.title">Frequently asked questions</h2>
         <details>
-          <summary data-i18n="pd.s10.q1">The app found no sessions.</summary>
-          <p data-i18n="pd.s10.a1">Check that the agents have been run at least once so their history directories exist, then set the root manually for the ones installed in a non-standard place.</p>
+          <summary data-i18n="pd.s10.q1">How is cost counted?</summary>
+          <p data-i18n="pd.s10.a1">Usage is aggregated from the records each CLI keeps. Grok Build, Kimi Code and OpenCode bring their own recorded cost; for the rest, cost is priced from a model catalogue when the model is known, and left out rather than guessed when it is not.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s10.q2">A session never shows a live status.</summary>
-          <p data-i18n="pd.s10.a2">Some agents, such as Antigravity and WorkBuddy, have no live event path. Those sessions appear in history only, and the app says so.</p>
+          <summary data-i18n="pd.s10.q2">Why does a CLI have to be started from ASC to show live status?</summary>
+          <p data-i18n="pd.s10.a2">Live status comes from hooks and environment variables ASC injects when it launches a CLI. An agent that was already running when ASC started, or one started from your own terminal, has no observer attached: it still appears in session history, but it will not show live status. Start it from ASC, or relaunch it there, to attach one.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s10.q3">The macOS app will not open.</summary>
-          <p data-i18n="pd.s10.a3">The build is unsigned, so Gatekeeper blocks a plain double-click. Right-click the app and choose Open once; afterwards it launches normally.</p>
+          <summary data-i18n="pd.s10.q3">Does it work with WSL, and where does it look for the CLIs?</summary>
+          <p data-i18n="pd.s10.a3">ASC discovers compatible CLIs on the host and in compatible WSL distributions, and can start sessions in either. Remote and multi-machine setups are not covered here; this documentation describes the desktop app on the machine where the agents run.</p>
         </details>
         <details>
-          <summary data-i18n="pd.s10.q4">Feishu cards are not arriving.</summary>
-          <p data-i18n="pd.s10.a4">Confirm the connection is enabled in settings and that the bot is allowed to message you. Cards are only sent while a prompt is genuinely waiting for an answer.</p>
+          <summary data-i18n="pd.s10.q4">What happens to sessions after a reboot?</summary>
+          <p data-i18n="pd.s10.a4">History survives a reboot. Session files live on disk where the CLI wrote them, and ASC reads them again on the next launch, so past sessions remain browsable, searchable and resumable. Live status does not survive, because it describes a running process; after a reboot a session is history again until you resume it.</p>
         </details>
       </section>
 
-      <p class="doc-foot-note" data-i18n="pd.foot.note">If this page and the application disagree, the application is right — the page is written from the same source, but the build is the truth.</p>
+      <p class="doc-foot-note" data-i18n="pd.foot.note">The documentation, the changelog and the downloads all live here; the GitHub icons in the header and footer link to the repository.</p>
 
     </article>
   </div>
@@ -224,8 +220,8 @@
     <a href="./download.html" data-i18n="l.nav.download">Download</a>
     <a class="foot-repo" href="https://github.com/fatedawn/agent-session-center" rel="noopener">GitHub</a>
   </p>
-  <p data-i18n="l.foot.upstream"></p>
-  <p data-i18n="l.foot.line"></p>
+  <p data-i18n="l.foot.upstream">Early prototype from UniRound-Tec/hrack (Apache-2.0); Agent Session Center is an independently maintained hard fork — see NOTICE.</p>
+  <p data-i18n="l.foot.line">Agent Session Center · Apache-2.0 · this site is a static page with no network calls.</p>
 </footer>
 
 <script src="./assets/i18n.js"></script>
