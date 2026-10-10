@@ -1097,3 +1097,364 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
   .lang-btn { padding: 5px 7px; font-size: 10px; letter-spacing: 0.6px; }
   .brand-name { font-size: 14px; }
 }
+
+/* ─────────────── footer link row ───────────────
+   The footer carries the site's own pages (docs / changelog / download) as internal
+   links, and the repository line is the only GitHub link down here. */
+
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 6px;
+}
+
+.foot-links a {
+  color: var(--dim);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.foot-links a:hover { color: var(--ink); }
+
+/* ─────────────── demo section (index) ───────────────
+   The demo recording is the largest thing on the page on purpose: it takes the full
+   prose width, where the hero recording sits in one column of the two-column hero. */
+
+.lp-demo { padding-top: 64px; }
+
+.lp-demo-shot {
+  margin: 24px 0 0;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--screen);
+}
+
+.lp-demo-shot video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lp-demo-cta { margin: 18px 0 0; }
+
+.lp-demo .hero-note { margin-top: 16px; max-width: 72ch; }
+
+/* ─────────────── documentation page ───────────────
+   One long text page: a table of contents in a left rail on wide screens, the prose in
+   a column that never grows past a comfortable measure. */
+
+.doc-hero { padding: 56px 0 8px; }
+.doc-hero .lede { max-width: 70ch; }
+
+.doc {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  padding-top: 24px;
+}
+
+@media (min-width: 900px) {
+  .doc { grid-template-columns: 220px minmax(0, 1fr); gap: 56px; }
+}
+
+.doc-toc {
+  align-self: start;
+}
+
+@media (min-width: 900px) {
+  .doc-toc {
+    position: sticky;
+    top: 84px;
+  }
+}
+
+.doc-toc-title {
+  margin: 0 0 12px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.doc-toc ol { list-style: none; margin: 0; padding: 0; }
+
+.doc-toc li { margin: 0 0 9px; }
+
+.doc-toc a {
+  color: var(--dim);
+  text-decoration: none;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.doc-toc a:hover { color: var(--ink); }
+
+.doc-body { max-width: 72ch; }
+
+.doc-body section {
+  padding-top: 30px;
+  border-top: 1px solid var(--hair);
+}
+
+.doc-body section:first-child { border-top: 0; padding-top: 0; }
+
+.doc-body h2 { margin-top: 0; }
+
+.doc-body p { color: var(--dim); }
+
+.doc-body a {
+  color: var(--coral-text);
+  text-decoration: none;
+}
+
+.doc-body a:hover { text-decoration: underline; }
+
+.doc-note,
+.doc-foot-note {
+  margin: 16px 0 0;
+  max-width: 72ch;
+  color: var(--faint);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.doc-foot-note {
+  padding-top: 16px;
+  margin-top: 32px;
+  border-top: 1px solid var(--hair);
+}
+
+/* eight agents, as a definition list */
+
+.doc-agents {
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.doc-agents dt {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--hair);
+}
+
+.doc-agents dd {
+  margin: 0;
+  padding: 0 0 12px;
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+@media (min-width: 640px) {
+  .doc-agents { grid-template-columns: max-content minmax(0, 1fr); column-gap: 28px; }
+  .doc-agents dt { padding: 12px 0; }
+  .doc-agents dd { padding: 12px 0; border-top: 1px solid var(--hair); }
+  .doc-agents dt:first-of-type,
+  .doc-agents dt:first-of-type + dd { border-top: 0; }
+}
+
+/* install steps and the five screens */
+
+.doc-steps { margin: 14px 0 0; padding-left: 20px; color: var(--dim); }
+.doc-steps li { margin-bottom: 8px; }
+
+.doc-features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (min-width: 760px) {
+  .doc-features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.doc-feature {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: var(--plate);
+  padding: 14px 16px;
+}
+
+.doc-feature h3 { margin: 0 0 6px; font-size: 15px; letter-spacing: -0.2px; }
+.doc-feature p { margin: 0; color: var(--dim); font-size: 13.5px; line-height: 1.55; }
+
+/* Q/A pairs, closed by default */
+
+.doc-body details {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: var(--plate);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+
+.doc-body summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 500;
+  list-style: none;
+}
+
+.doc-body summary::-webkit-details-marker { display: none; }
+
+.doc-body summary::before {
+  content: '›';
+  flex: none;
+  font-family: var(--mono);
+  color: var(--faint);
+  transition: transform 160ms ease;
+}
+
+.doc-body details[open] summary::before { transform: rotate(90deg); }
+
+.doc-body details p { margin: 10px 0 0; font-size: 14px; }
+
+/* ─────────────── changelog ─────────────── */
+
+.cl-list { margin-top: 28px; }
+
+.cl-release {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: var(--plate);
+  padding: 20px 22px;
+}
+
+.cl-release + .cl-release { margin-top: 14px; }
+
+.cl-release-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.cl-tag {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink);
+  letter-spacing: 0;
+}
+
+.cl-date {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.cl-title { margin: 10px 0 0; color: var(--ink); font-size: 14.5px; }
+
+.cl-bullets { margin: 12px 0 0; padding-left: 20px; color: var(--dim); }
+.cl-bullets li { margin-bottom: 6px; font-size: 13.5px; line-height: 1.6; }
+
+.cl-empty {
+  margin-top: 28px;
+  border: 1px dashed var(--hair);
+  border-radius: var(--r-md);
+  padding: 20px 22px;
+}
+
+.cl-empty h2 { font-size: 18px; margin: 0; }
+.cl-empty p { margin: 8px 0 0; color: var(--dim); font-size: 13.5px; }
+
+/* ─────────────── download page ─────────────── */
+
+.dl-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+@media (min-width: 700px) {
+  .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1080px) {
+  .dl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.dl-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: var(--plate);
+  padding: 18px 20px;
+}
+
+.dl-card h3 { margin: 0 0 6px; font-size: 16px; letter-spacing: -0.3px; }
+
+.dl-note { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.55; }
+
+.dl-file {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.dl-size { margin: 4px 0 0; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+
+.dl-actions { margin: 14px 0 0; }
+
+.dl-hash {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--faint);
+  word-break: break-all;
+}
+
+.dl-hash-label {
+  font-family: var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.dl-hash code { font-family: var(--mono); font-size: 10.5px; color: var(--dim); }
+.dl-hash-link { color: var(--dim); text-decoration: none; }
+.dl-hash-link:hover { color: var(--ink); text-decoration: underline; }
+
+.dl-block h2 { margin-top: 0; }
+
+.dl-block p {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.dl-autoupdate {
+  margin: 40px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--faint);
+  border-radius: var(--r-sm);
+  background: var(--screen);
+  color: var(--dim);
+  font-size: 13.5px;
+}
+
+/* CJK: the new headings and machine labels drop the Latin tracking. */
+
+html[lang="zh-CN"] .doc-body h3,
+html[lang="zh-CN"] .doc-hero h1,
+html[lang="zh-CN"] .dl-card h3,
+html[lang="zh-CN"] .doc-feature h3,
+html[lang="zh-CN"] .cl-empty h2 { letter-spacing: 0; }
+
+html[lang="zh-CN"] .doc-toc-title,
+html[lang="zh-CN"] .dl-hash-label { letter-spacing: 1px; }

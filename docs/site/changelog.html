@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-default-lang="en" data-doc-title-key="pc.doc.title" data-doc-desc-key="pc.doc.description">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Session Center — changelog</title>
+<meta name="description" content="Every release of Agent Session Center, newest first: what changed, what was fixed, and what was left alone.">
+<meta name="color-scheme" content="dark light">
+<link rel="stylesheet" href="./assets/style.css">
+<script src="./assets/theme.js"></script>
+<link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <a class="brand" href="./index.html">
+      <img src="./assets/mark.svg" alt="" width="26" height="26">
+      <span class="brand-name">Agent Session Center</span>
+    </a>
+    <nav class="lp-nav" aria-label="Sections">
+      <a href="./index.html" data-i18n="l.nav.home">Home</a>
+      <a href="./index.html#features" data-i18n="l.nav.features">Features</a>
+      <a href="./index.html#demo" data-i18n="l.nav.demo">Demo</a>
+      <a href="./docs.html" data-i18n="l.nav.docs">Docs</a>
+      <a href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
+      <a href="./download.html" data-i18n="l.nav.download">Download</a>
+    </nav>
+  </div>
+  <div class="topbar-right">
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" class="lang-btn">EN</button>
+      <button type="button" data-lang="zh" class="lang-btn">中文</button>
+    </div>
+    <button type="button" class="icon-btn theme-btn" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4z"/></svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/fatedawn/agent-session-center" rel="noopener" aria-label="GitHub" title="GitHub">
+      <svg viewBox="0 0 16 16" width="19" height="19" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="doc-hero">
+    <h1 data-i18n="pc.h1">Changelog</h1>
+    <p class="lede" data-i18n="pc.lede">Every release, newest first. Each entry lists what changed and what was left alone, so you can tell whether an upgrade matters to you.</p>
+  </section>
+
+  <div id="releases" class="cl-list"></div>
+
+  <section class="cl-empty" id="cl-empty" hidden>
+    <h2 data-i18n="pc.noRelease.title">No releases to show</h2>
+    <p data-i18n="pc.noRelease.body">The release list could not be loaded. The build always ships it, so this usually means a stale or blocked script — reloading the page should bring it back.</p>
+  </section>
+
+  <p class="cta-row"><a class="btn btn-primary" href="./download.html" data-i18n="pc.downloadCta">Download the latest release</a></p>
+  <p class="doc-foot-note" data-i18n="pc.foot.note">Version numbers follow the desktop application. The site and the app are released together from the same repository.</p>
+
+</main>
+
+<footer class="foot">
+  <p class="foot-links">
+    <a href="./index.html" data-i18n="l.nav.home">Home</a>
+    <a href="./docs.html" data-i18n="l.nav.docs">Docs</a>
+    <a href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
+    <a href="./download.html" data-i18n="l.nav.download">Download</a>
+    <a class="foot-repo" href="https://github.com/fatedawn/agent-session-center" rel="noopener">GitHub</a>
+  </p>
+  <p data-i18n="l.foot.upstream"></p>
+  <p data-i18n="l.foot.line"></p>
+</footer>
+
+<script src="./assets/i18n.js"></script>
+<script src="./assets/pages.js"></script>
+<script src="./assets/changelog-data.js"></script>
+<script src="./assets/changelog.js"></script>
+<script src="./assets/landing.js"></script>
+</body>
+</html>

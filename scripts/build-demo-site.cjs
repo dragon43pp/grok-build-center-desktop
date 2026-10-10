@@ -40,7 +40,7 @@ const vm = require('node:vm')
 
 const ROOT = path.resolve(__dirname, '..')
 const SOURCE = path.join(ROOT, 'docs', 'site')
-const PAGES = ['index.html', 'simulator.html']
+const PAGES = ['index.html', 'simulator.html', 'docs.html', 'changelog.html', 'download.html']
 const LOCALES = [
   { dir: 'en', lang: 'en', attr: 'en' },
   { dir: 'zh', lang: 'zh', attr: 'zh-CN' }
@@ -63,12 +63,24 @@ function parseArgs(argv) {
 }
 
 /* Read the string table by executing i18n.js, rather than by re-typing the title here.
-   A build that paraphrases the page it is building drifts away from it. */
+   A build that paraphrases the page it is building drifts away from it.
+
+   The string table is split across two files: i18n.js holds the landing and simulator
+   keys, and pages.js holds the keys for the docs / changelog / download pages. Both run
+   in the same sandbox so the table is complete before any head is built; a missing
+   pages.js is a hard error, because the alternative is shipping "pd.doc.title" as the
+   page title. */
 function loadStrings() {
-  const source = fs.readFileSync(path.join(SOURCE, 'assets', 'i18n.js'), 'utf8')
   const sandbox = { window: { location: { search: '' } }, navigator: { language: 'en' } }
   vm.createContext(sandbox)
-  vm.runInContext(source, sandbox)
+  vm.runInContext(fs.readFileSync(path.join(SOURCE, 'assets', 'i18n.js'), 'utf8'), sandbox)
+
+  const pagesPath = path.join(SOURCE, 'assets', 'pages.js')
+  if (!fs.existsSync(pagesPath)) {
+    throw new Error('assets/pages.js is missing; the new pages need its string table')
+  }
+  vm.runInContext(fs.readFileSync(pagesPath, 'utf8'), sandbox)
+
   const strings = sandbox.window.ASCDemo && sandbox.window.ASCDemo.i18n && sandbox.window.ASCDemo.i18n.strings
   if (!strings || !strings.en || !strings.zh) {
     throw new Error('assets/i18n.js did not expose both language packs')

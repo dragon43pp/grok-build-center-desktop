@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en" data-default-lang="en" data-doc-title-key="pd.doc.title" data-doc-desc-key="pd.doc.description">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Session Center — documentation</title>
+<meta name="description" content="The documentation for Agent Session Center: what it is, the eight agents it understands, how to install it, the permission model, and where the source lives.">
+<meta name="color-scheme" content="dark light">
+<link rel="stylesheet" href="./assets/style.css">
+<script src="./assets/theme.js"></script>
+<link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <a class="brand" href="./index.html">
+      <img src="./assets/mark.svg" alt="" width="26" height="26">
+      <span class="brand-name">Agent Session Center</span>
+    </a>
+    <nav class="lp-nav" aria-label="Sections">
+      <a href="./index.html" data-i18n="l.nav.home">Home</a>
+      <a href="./index.html#features" data-i18n="l.nav.features">Features</a>
+      <a href="./index.html#demo" data-i18n="l.nav.demo">Demo</a>
+      <a href="./docs.html" data-i18n="l.nav.docs">Docs</a>
+      <a href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
+      <a href="./download.html" data-i18n="l.nav.download">Download</a>
+    </nav>
+  </div>
+  <div class="topbar-right">
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" class="lang-btn">EN</button>
+      <button type="button" data-lang="zh" class="lang-btn">中文</button>
+    </div>
+    <button type="button" class="icon-btn theme-btn" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4z"/></svg>
+    </button>
+    <a class="icon-btn" href="https://github.com/fatedawn/agent-session-center" rel="noopener" aria-label="GitHub" title="GitHub">
+      <svg viewBox="0 0 16 16" width="19" height="19" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="doc-hero">
+    <h1 data-i18n="pd.h1">Everything Agent Session Center does, and how</h1>
+    <p class="lede" data-i18n="pd.lede">
+      This page is the whole manual. It covers what the app is, the eight coding agents it
+      understands, how to install it on each platform, the permission model it can and
+      cannot observe, and where the source is published.
+    </p>
+  </section>
+
+  <div class="doc">
+    <nav class="doc-toc" aria-labelledby="toc-heading">
+      <p class="doc-toc-title mono" id="toc-heading" data-i18n="pd.toc.title">Contents</p>
+      <ol>
+        <li><a href="#s1" data-i18n="pd.s1.title">What it is</a></li>
+        <li><a href="#s2" data-i18n="pd.s2.title">The eight agents</a></li>
+        <li><a href="#s3" data-i18n="pd.s3.title">Install</a></li>
+        <li><a href="#s4" data-i18n="pd.s4.title">First run</a></li>
+        <li><a href="#s5" data-i18n="pd.s5.title">The five screens</a></li>
+        <li><a href="#s6" data-i18n="pd.s6.title">Search</a></li>
+        <li><a href="#s7" data-i18n="pd.s7.title">Feishu approvals</a></li>
+        <li><a href="#s8" data-i18n="pd.s8.title">Privacy and data</a></li>
+        <li><a href="#s9" data-i18n="pd.s9.title">Source and contributing</a></li>
+        <li><a href="#s10" data-i18n="pd.s10.title">Troubleshooting</a></li>
+      </ol>
+    </nav>
+
+    <article class="doc-body">
+
+      <section id="s1">
+        <h2 data-i18n="pd.s1.title">What it is</h2>
+        <p data-i18n="pd.s1.p1">Agent Session Center is a desktop application that gathers the sessions of several AI coding agents into one window. Each agent writes its history in its own format, in its own directory; ASC reads those event streams and projects them into a single, consistent list you can browse, search and resume from.</p>
+        <p data-i18n="pd.s1.p2">It does not run the agents, replace their terminal, or sit between you and the model. It observes the files they already write, and it opens the original terminal when you resume a session.</p>
+      </section>
+
+      <section id="s2">
+        <h2 data-i18n="pd.s2.title">The eight agents</h2>
+        <p data-i18n="pd.s2.p">Eight agents are supported. They are not equally observable, and the app says so rather than pretending otherwise.</p>
+        <dl class="doc-agents">
+          <dt data-i18n="pd.agents.r1.name">Claude Code</dt>
+          <dd data-i18n="pd.agents.r1.detail">Full session history, tool lifecycle, permission prompts and token usage.</dd>
+          <dt data-i18n="pd.agents.r2.name">Codex CLI</dt>
+          <dd data-i18n="pd.agents.r2.detail">Session history and tool events, with token totals per turn.</dd>
+          <dt data-i18n="pd.agents.r3.name">OpenCode</dt>
+          <dd data-i18n="pd.agents.r3.detail">The deepest reader of the eight: history, tool lifecycle and message summaries.</dd>
+          <dt data-i18n="pd.agents.r4.name">Grok Build</dt>
+          <dd data-i18n="pd.agents.r4.detail">History and tool events; status falls back to low confidence when its observer goes quiet.</dd>
+          <dt data-i18n="pd.agents.r5.name">Kimi Code</dt>
+          <dd data-i18n="pd.agents.r5.detail">History and tool events, with a thinking phase where the model reports one.</dd>
+          <dt data-i18n="pd.agents.r6.name">Pi</dt>
+          <dd data-i18n="pd.agents.r6.detail">History and tool events; reports tokens and context rather than a single number.</dd>
+          <dt data-i18n="pd.agents.r7.name">Antigravity</dt>
+          <dd data-i18n="pd.agents.r7.detail">Session history only — it has no live event path, so it never shows a live status.</dd>
+          <dt data-i18n="pd.agents.r8.name">WorkBuddy</dt>
+          <dd data-i18n="pd.agents.r8.detail">Session history only, like Antigravity; it appears in the list but reports no live state.</dd>
+        </dl>
+        <p class="doc-note" data-i18n="pd.s2.note">These levels are not marketing tiers. Each one is declared in the adapters' source, and the app marks low confidence instead of guessing when an observer cannot be trusted.</p>
+      </section>
+
+      <section id="s3">
+        <h2 data-i18n="pd.s3.title">Install</h2>
+        <p data-i18n="pd.s3.p">The builds are unsigned. Download the file for your platform, verify its SHA-256 against the published value, and run it. There is no installer service and no background updater that phones home.</p>
+        <ul class="doc-steps">
+          <li data-i18n="pd.s3.win">Windows: run the Setup .exe. It installs per user and needs no administrator rights.</li>
+          <li data-i18n="pd.s3.mac">macOS: open the .dmg and drag the app to Applications. Because it is unsigned, the first launch needs a right-click, Open.</li>
+          <li data-i18n="pd.s3.linux">Linux: install the .deb, or make the AppImage executable and run it. Both find the agents already on your machine.</li>
+        </ul>
+        <p class="cta-row"><a class="btn btn-primary" href="./download.html" data-i18n="l.nav.download">Download</a></p>
+      </section>
+
+      <section id="s4">
+        <h2 data-i18n="pd.s4.title">First run</h2>
+        <p data-i18n="pd.s4.p1">On launch, the app scans the standard directories for each agent and lists whatever it finds. The first scan takes a few seconds; after that it watches those directories and updates as sessions start, progress and finish.</p>
+        <p data-i18n="pd.s4.p2">Nothing is uploaded. The scan reads local files and keeps its index on your machine.</p>
+      </section>
+
+      <section id="s5">
+        <h2 data-i18n="pd.s5.title">The five screens</h2>
+        <p data-i18n="pd.s5.p">The application is five views over the same data, reachable from the left rail.</p>
+        <div class="doc-features">
+          <div class="doc-feature">
+            <h3 data-i18n="pd.s5.f1.title">Session history</h3>
+            <p data-i18n="pd.s5.f1.body">Every session, from every agent, in one column — newest first, with status, workspace and agent.</p>
+          </div>
+          <div class="doc-feature">
+            <h3 data-i18n="pd.s5.f2.title">AI search</h3>
+            <p data-i18n="pd.s5.f2.body">Describe what you were working on in plain language and get the session back.</p>
+          </div>
+          <div class="doc-feature">
+            <h3 data-i18n="pd.s5.f3.title">Resume</h3>
+            <p data-i18n="pd.s5.f3.body">One click opens the original agent in its own terminal, in the right directory, with the conversation continued.</p>
+          </div>
+          <div class="doc-feature">
+            <h3 data-i18n="pd.s5.f4.title">Usage</h3>
+            <p data-i18n="pd.s5.f4.body">Tokens and cost per agent per day, so a long session is not a surprise.</p>
+          </div>
+          <div class="doc-feature">
+            <h3 data-i18n="pd.s5.f5.title">Feishu</h3>
+            <p data-i18n="pd.s5.f5.body">When an agent blocks on a permission prompt, the request is pushed to your phone so you can approve it away from the desk.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="s6">
+        <h2 data-i18n="pd.s6.title">Search</h2>
+        <p data-i18n="pd.s6.p1">Search has two modes. The plain one matches text in the sessions already indexed. The AI one embeds your question and ranks sessions by meaning, which is how you find a session when you remember the problem but not the words.</p>
+        <p data-i18n="pd.s6.p2">Both run against the local index. If you have configured a model provider, the AI mode uses it for the embedding step only.</p>
+      </section>
+
+      <section id="s7">
+        <h2 data-i18n="pd.s7.title">Feishu approvals</h2>
+        <p data-i18n="pd.s7.p1">Feishu is optional and off until you connect it. When it is on and an agent reaches a permission prompt, ASC sends you a card with the command and two buttons.</p>
+        <p data-i18n="pd.s7.p2">Approving the card answers the prompt in the session; the agent continues in its terminal. Declining sends the refusal instead. Either way the session itself never leaves your machine — only the question and your answer travel.</p>
+        <p data-i18n="pd.s7.p3">If Feishu is not connected, everything still works; the prompts simply wait in the terminal as they always did.</p>
+      </section>
+
+      <section id="s8">
+        <h2 data-i18n="pd.s8.title">Privacy and data</h2>
+        <details>
+          <summary data-i18n="pd.s8.q1">What does the app read?</summary>
+          <p data-i18n="pd.s8.a1">The session files and event streams the agents already write, in their standard directories. It does not read your terminal screen and does not attach to the running process.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s8.q2">What leaves my computer?</summary>
+          <p data-i18n="pd.s8.a2">By default, nothing. If you enable Feishu, only the permission question and your answer are sent to the Feishu service. If you enable AI search with a hosted provider, your query text is sent to that provider.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s8.q3">Where is the index stored?</summary>
+          <p data-i18n="pd.s8.a3">In the application's own data directory, as a local database. Deleting that directory resets the app to a fresh scan.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s8.q4">Is there telemetry?</summary>
+          <p data-i18n="pd.s8.a4">No. The app does not send usage statistics or crash reports anywhere.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s8.q5">Can I point it at a custom directory?</summary>
+          <p data-i18n="pd.s8.a5">Yes. Each agent has a configurable root, so a non-standard install location can be added without moving files.</p>
+        </details>
+      </section>
+
+      <section id="s9">
+        <h2 data-i18n="pd.s9.title">Source and contributing</h2>
+        <p data-i18n="pd.s9.p">Agent Session Center is open source under Apache-2.0. The source, the issue tracker and the contribution guide are in the repository.</p>
+        <p class="cta-row"><a class="btn" href="https://github.com/fatedawn/agent-session-center" rel="noopener" data-i18n="try.repo">Read the source</a></p>
+      </section>
+
+      <section id="s10">
+        <h2 data-i18n="pd.s10.title">Troubleshooting</h2>
+        <details>
+          <summary data-i18n="pd.s10.q1">The app found no sessions.</summary>
+          <p data-i18n="pd.s10.a1">Check that the agents have been run at least once so their history directories exist, then set the root manually for the ones installed in a non-standard place.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s10.q2">A session never shows a live status.</summary>
+          <p data-i18n="pd.s10.a2">Some agents, such as Antigravity and WorkBuddy, have no live event path. Those sessions appear in history only, and the app says so.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s10.q3">The macOS app will not open.</summary>
+          <p data-i18n="pd.s10.a3">The build is unsigned, so Gatekeeper blocks a plain double-click. Right-click the app and choose Open once; afterwards it launches normally.</p>
+        </details>
+        <details>
+          <summary data-i18n="pd.s10.q4">Feishu cards are not arriving.</summary>
+          <p data-i18n="pd.s10.a4">Confirm the connection is enabled in settings and that the bot is allowed to message you. Cards are only sent while a prompt is genuinely waiting for an answer.</p>
+        </details>
+      </section>
+
+      <p class="doc-foot-note" data-i18n="pd.foot.note">If this page and the application disagree, the application is right — the page is written from the same source, but the build is the truth.</p>
+
+    </article>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <p class="foot-links">
+    <a href="./index.html" data-i18n="l.nav.home">Home</a>
+    <a href="./docs.html" data-i18n="l.nav.docs">Docs</a>
+    <a href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
+    <a href="./download.html" data-i18n="l.nav.download">Download</a>
+    <a class="foot-repo" href="https://github.com/fatedawn/agent-session-center" rel="noopener">GitHub</a>
+  </p>
+  <p data-i18n="l.foot.upstream"></p>
+  <p data-i18n="l.foot.line"></p>
+</footer>
+
+<script src="./assets/i18n.js"></script>
+<script src="./assets/pages.js"></script>
+<script src="./assets/landing.js"></script>
+</body>
+</html>
