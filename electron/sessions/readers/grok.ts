@@ -4,8 +4,9 @@
  * Grok is the agent we care about most, and the one that gives us the most:
  * `summary.json` carries title, cwd, model, timestamps and message counts, and
  * `usage.json` carries the token breakdown **and the dollar cost Grok itself
- * recorded**. No other agent on this machine records its own cost, so for Grok
- * we can show a real bill instead of a catalogue estimate.
+ * recorded** — a real bill rather than a catalogue estimate. Grok is not the
+ * only reader that produces a `recorded` cost, though: Kimi Code and OpenCode
+ * do as well.
  *
  * Two traps:
  *
