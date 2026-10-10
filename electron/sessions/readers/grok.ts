@@ -14,8 +14,8 @@
  *    directory, each containing one directory per session, plus at least one
  *    stray file (`session_search.sqlite`). Anything that treats the first level
  *    as sessions reports a handful of nonsense entries.
- * Which nesting is correct is settled by billing, because `usage.json` is the
- * only place on this machine where an agent records what it actually paid. The
+ * Which nesting is correct is settled by billing, because `usage.json` is where
+ * Grok records what it actually paid. The
  * counters are priced with the first-party model prices (`tools/verify_pricing.ts`)
  * and compared against `costUsdTicks` across all 34 model blocks that carry one:
  *
