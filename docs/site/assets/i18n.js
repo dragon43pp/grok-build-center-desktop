@@ -69,7 +69,7 @@
       'l.f3.tag': 'Resume',
       'l.f3.title': 'One click back into the conversation',
       'l.f3.body':
-        'Resume buttons are shown only where they have been tested: Claude Code, Codex CLI and Grok Build. Everywhere else the workspace opens with the transcript — an unverified capability is never dressed up as a working one.',
+        'Resume is offered where it has been verified: Claude Code, Codex CLI and Grok Build. Everywhere else the resume button is greyed out and the button itself carries the reason, because an unverified capability is never dressed up as a working one.',
       'l.f4.tag': 'Usage',
       'l.f4.title': 'Tokens and cost, per agent, per day',
       'l.f4.body':
@@ -90,7 +90,7 @@
         'The builds are unsigned; every release publishes SHA-256 so you can verify what you run. The whole product is Apache-2.0 on GitHub.',
       'l.dl.title': 'Download',
       'l.dl.lede':
-        'v1.0.3 for Windows, Linux and macOS. Unzip, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
+        'v1.0.3 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
       'l.dl.cta': 'Get the latest release',
       'l.dl.src': 'Read the source',
       'l.foot.upstream':
@@ -154,7 +154,7 @@
       'caps.lede':
         'Harnesses are not equally observable. Every level below is declared in the source — electron/agents/adapters/*/types.ts for the six harnesses, and electron/dsh-host/DshProjectionBridge.ts for DeepSeek Harness — rather than invented for this page.',
       'caps.note':
-        'Read the right-hand columns first, because that is where the sources separate: OpenCode goes furthest overall and is the only one that reports message summaries, and Pi is the only one that reports tokens and context rather than a single number. Read the left-hand columns to see what everybody gets — a thinking phase and a tool lifecycle, everywhere. Antigravity and WorkBuddy have no live path at all; they appear in session history only.',
+        'Read the right-hand columns first, because that is where the sources separate: OpenCode goes furthest overall and is the only one that reports message summaries, and Pi is the only one that reports tokens and context rather than a single number. Read the left-hand columns to see what every harness with a live path gets — a thinking phase and a tool lifecycle. Antigravity and WorkBuddy have no live path at all; they appear in session history only.',
       'caps.headNote':
         'Bar length is how deep that dimension goes. A full bar means this harness reaches the top level for that column.',
       'caps.col.harness': 'harness',
@@ -259,7 +259,7 @@
       'l.f3.tag': '一键恢复',
       'l.f3.title': '一下回到那段对话',
       'l.f3.body':
-        '恢复按钮只在实测过的三家放：Claude Code、Codex CLI 和 Grok Build。其余的会打开工作区并展示记录 —— 没验证过的能力，绝不假装能用。',
+        '只有验证过的三家提供恢复：Claude Code、Codex CLI 和 Grok Build。其余地方的恢复按钮是灰的，原因直接写在按钮上 —— 没验证过的能力，绝不假装能用。',
       'l.f4.tag': '用量统计',
       'l.f4.title': 'token 和费用，按 agent、按天',
       'l.f4.body':
@@ -280,7 +280,7 @@
         '构建未签名；每个 Release 公布 SHA-256，跑什么自己核得清。整个产品在 GitHub 上，Apache-2.0。',
       'l.dl.title': '下载',
       'l.dl.lede':
-        'v1.0.3，Windows、Linux、macOS。解压即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，什么都不离开你的电脑。',
+        'v1.0.3，Windows、Linux、macOS。下载即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，数据不离开你的电脑。',
       'l.dl.cta': '获取最新版本',
       'l.dl.src': '看源码',
       'l.foot.upstream':
@@ -341,7 +341,7 @@
       'caps.lede':
         '各家 harness 的可见度并不相同。下面每一档都是在源码里声明的 —— 六个 harness 看 electron/agents/adapters/*/types.ts，DeepSeek Harness 看 electron/dsh-host/DshProjectionBridge.ts —— 不是为这一页编的。',
       'caps.note':
-        '先看右边的列，差别都在那儿：OpenCode 整体走得最远，而且是唯一会汇报消息摘要的；Pi 是唯一同时报 token 和上下文的，不是只给一个数。再看左边的列，那是所有人都有的 —— 思考阶段和工具生命周期，一个不落。Antigravity 和 WorkBuddy 完全没有实时通道，只出现在会话历史里。',
+        '先看右边的列，差别都在那儿：OpenCode 整体走得最远，而且是唯一会汇报消息摘要的；Pi 是唯一同时报 token 和上下文的，不是只给一个数。再看左边的列，那是每个有实时通道的 harness 都有的 —— 思考阶段和工具生命周期。Antigravity 和 WorkBuddy 完全没有实时通道，只出现在会话历史里。',
       'caps.headNote': '条长表示这个维度能探到多深。满格意味着该 harness 在这一列达到了最高档。',
       'caps.col.harness': 'harness',
       'caps.gloss.harness': '声明这一行的观测方',
