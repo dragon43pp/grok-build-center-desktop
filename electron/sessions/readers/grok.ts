@@ -35,7 +35,8 @@
  * systematically *under*predicted (median ×0.31) — there is a cost driver Grok
  * bills for that its counters do not expose. Additive wins by a factor of ~4,
  * which is why the shape is what it is; the *magnitude* is an estimate, which is
- * also why Grok's own recorded figure always outranks anything we compute.
+ * also why Grok's own recorded figure always takes precedence over anything
+ * we compute.
  *
  * `usage.session.totalTokens` meanwhile is *defined* as `inputTokens +
  * outputTokens`, so it silently omits the cache counters. That is a misleading
