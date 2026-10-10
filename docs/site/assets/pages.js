@@ -33,7 +33,7 @@
 
     'pd.s2.title': 'Which agents are supported',
     'pd.s2.p':
-      'Eight coding agents appear in session history: Claude Code, Codex CLI, OpenCode, Grok Build, Kimi Code, Pi, Antigravity and WorkBuddy. Six of them also report live status while they run. A ninth source, DeepSeek Harness, is read as well when its home directory is present.',
+      'Eight coding agents appear in session history: Claude Code, Codex CLI, OpenCode, Grok Build, Kimi Code, Pi, Antigravity and WorkBuddy. Six of them also report live status while they run. DeepSeek Harness is read as well when its home directory is present, through its own projection channel.',
     'pd.s2.note':
       'Harnesses are not equally observable, and ASC does not pretend that they are. Each adapter declares what it can actually prove for the session in front of you, and the interface shows that level rather than a brand claim. The interactive demo carries the full capability matrix, column by column. The list below is the short version.',
 
@@ -106,7 +106,7 @@
     'pd.s7.p1':
       'ASC reads structured events, not the screen. Status comes from the official Hooks, SSE stream, extension API or runtime events of each CLI, never from parsing the terminal bytes. An observer can go quiet without stopping your session; when it does, ASC lowers the confidence it reports rather than guessing.',
     'pd.s7.p2':
-      'Nothing is uploaded. There is no telemetry, no analytics, no crash reporting and no account. Session transcripts stay on the machine and are read only to build the list, total the usage and render a transcript you open.',
+      'Nothing is uploaded to the project. There is no telemetry, no analytics, no crash reporting and no account. Session transcripts stay on the machine and are read only to build the list, total the usage and render a transcript you open.',
     'pd.s7.p3':
       'The one automatic request is an update check against this project on GitHub Releases, which <span class="mono">ASC_DISABLE_UPDATES=1</span> turns off. The AI assistant and the Feishu integration are both off until you configure them, and the Feishu connection is your own self-built app on your own tenant, not a service of the project. The complete list of outbound requests is in PRIVACY.md.',
 
@@ -129,7 +129,7 @@
 
     'pd.s9.title': 'Build from source, and contribute',
     'pd.s9.p':
-      'The desktop app lives in the repository root. Clone it, then run <span class="mono">npm install</span> and <span class="mono">npm run dev</span>; <span class="mono">npm run typecheck</span> and <span class="mono">npm run build</span> are the routine checks. Release packages must be built on their matching operating system through <span class="mono">npm run release:win</span>, <span class="mono">release:mac</span> and <span class="mono">release:linux</span>. Bug reports, reproducible edge cases and focused pull requests are welcome on GitHub; observer changes should come with a test that proves event ordering and fallback behavior. The project is Apache-2.0. This is the one section whose links point at GitHub.',
+      'The desktop app lives at <span class="mono">github.com/fatedawn/agent-session-center</span>. Clone it, then run <span class="mono">npm install</span> and <span class="mono">npm run dev</span>; <span class="mono">npm run typecheck</span> and <span class="mono">npm run build</span> are the routine checks. Release packages must be built on their matching operating system through <span class="mono">npm run release:win</span>, <span class="mono">release:mac</span> and <span class="mono">release:linux</span>. Bug reports, reproducible edge cases and focused pull requests are welcome on GitHub; observer changes should come with a test that proves event ordering and fallback behavior. The project is Apache-2.0. This is the one section whose links point at GitHub.',
 
     'pd.s10.title': 'Frequently asked questions',
     'pd.s10.q1': 'How is cost counted?',
@@ -178,7 +178,7 @@
     'pdl.unsigned.body':
       'No release is code-signed on any platform, so the operating system will interrupt the first launch. On Windows, SmartScreen shows a prompt: choose More info, then Run anyway. On macOS, Gatekeeper blocks the app: on macOS 15 and later, open System Settings, Privacy &amp; Security, and choose Open Anyway after a blocked attempt; on macOS 10.14 through 14, right-click the app and choose Open. Linux packages need no signature. None of this is an oversight — signing is planned but not applied for, and the SHA-256 sidecar is what makes a download checkable in the meantime.',
     'pdl.autoupdate':
-      'The app updates itself from the GitHub Releases of this project, so a new version arrives in-app even though this page serves the installers. The update check can be turned off with <span class="mono">ASC_DISABLE_UPDATES=1</span>.',
+      'The app checks the GitHub Releases of the project at startup and announces a new version in-app; it never installs silently. This page serves the installers themselves. <span class="mono">ASC_DISABLE_UPDATES=1</span> skips that check entirely.',
     'pdl.steps.title': 'After you download',
     'pdl.steps.win':
       'Run the installer and, if SmartScreen prompts, choose More info and then Run anyway. Launch ASC from the Start menu (type asc) and let the first CLI scan finish. Pick an agent and start a session.',
@@ -187,7 +187,7 @@
     'pdl.steps.linux':
       'For the AppImage, make it executable with chmod +x and run it; for the .deb, install it with apt. Launch ASC, let the first scan finish, then start a session.',
     'pdl.note':
-      'The documentation, the changelog and the installers all live on this site; the GitHub icon in the header is the only link out to the repository.',
+      'The documentation, the changelog and the downloads all live here; the GitHub icons in the header and footer link to the repository.',
 
     /* ── changelog.html ── */
     'pc.doc.title': 'Changelog — Agent Session Center',
@@ -195,10 +195,10 @@
       'Release notes for Agent Session Center, newest first: what changed in versions 1.0.0 through 1.0.3.',
     'pc.h1': 'Changelog',
     'pc.lede':
-      'Every public release of Agent Session Center, newest first. The same list is kept in the CHANGELOG.md of the repository; this page and that file are meant to agree.',
+      'Every public release from 1.0.0 on, newest first. The same list is kept in the CHANGELOG.md of the repository, which also carries the pre-1.0 history.',
     'pc.noRelease.title': 'No releases to show',
     'pc.noRelease.body':
-      'The release data could not be loaded. The full history is in the CHANGELOG.md of the repository, and the installers are on the download page.',
+      'The release data could not be loaded. The repository CHANGELOG.md carries the full history, including the pre-1.0 releases, and the installers are on the download page.',
     'pc.downloadCta': 'Download the latest version',
     'pc.foot.note':
       'Release notes for the desktop app, in both languages. The changelog data on this page is built into the site.',
@@ -206,10 +206,10 @@
     /* ── landing page demo block (index.html) ── */
     'pld.demo.title': 'Watch it run',
     'pld.demo.body':
-      'The recording below follows the full flow in 46 seconds: session history across eight agents, AI search, one-click resume, per-agent usage, and a Feishu approval on a phone.',
+      'The recording below follows the real flow in 46 seconds: session history, AI search, one-click resume, per-agent usage, and a Feishu approval on a phone.',
     'pld.demo.play': 'Play full screen',
     'pld.demo.simulator': 'Open the interactive demo',
-    'pld.demo.note': 'The recording is the real application, unedited.'
+    'pld.demo.note': 'The recording is the real application.'
   })
 
   /* ─────────────────────────── 简体中文 ─────────────────────────── */
@@ -231,7 +231,7 @@
 
     'pd.s2.title': '支持哪些 Agent',
     'pd.s2.p':
-      '会话历史覆盖 8 个 Coding Agent：Claude Code、Codex CLI、OpenCode、Grok Build、Kimi Code、Pi、Antigravity 和 WorkBuddy。其中 6 个在运行时还能上报实时状态。当 DeepSeek Harness 的家目录存在时，它作为第 9 个来源也会被读取。',
+      '会话历史覆盖 8 个 Coding Agent：Claude Code、Codex CLI、OpenCode、Grok Build、Kimi Code、Pi、Antigravity 和 WorkBuddy。其中 6 个在运行时还能上报实时状态。只要 DeepSeek Harness 的 home 目录存在，它的会话也会被读到 —— 它有自己的一条观测通道。',
     'pd.s2.note':
       '各家 Harness 的可观测程度并不相同，ASC 也不会假装它们一样。每个 Adapter 只声明它在眼前这场会话里确实能证明的东西，界面展示的是这个实际档位，而不是一句品牌宣传。完整的逐列能力矩阵在交互式演示里，下面只列要点。',
 
@@ -304,7 +304,7 @@
     'pd.s7.p1':
       'ASC 读的是结构化事件，不是屏幕。状态来自每个 CLI 官方的 Hooks、SSE 流、Extension API 或运行时事件，从不解析终端的字节流。观测者失联不会带走你的会话；真的失联时，ASC 会降低上报的置信度，而不是猜一个。',
     'pd.s7.p2':
-      '什么都不上传。没有埋点、没有分析、没有崩溃上报、没有账号。会话记录留在本机，只在生成列表、汇总用量、以及你打开某场会话时被读取。',
+      '不会向项目方上传任何东西。没有埋点、没有分析、没有崩溃上报、没有账号。会话记录留在本机，只用来生成列表、汇总用量，以及渲染你自己打开的那份记录。',
     'pd.s7.p3':
       '唯一自动发起的请求是向项目在 GitHub 上的 Release 检查更新，可用 <span class="mono">ASC_DISABLE_UPDATES=1</span> 关掉。AI 助手和飞书集成在你配置之前都是关闭的，飞书连的是你自己自建的应用、你自己的租户，不是项目方的服务。全部对外请求的清单在 PRIVACY.md。',
 
@@ -327,7 +327,7 @@
 
     'pd.s9.title': '从源码构建，以及参与贡献',
     'pd.s9.p':
-      '桌面程序在仓库根目录。克隆下来后跑 <span class="mono">npm install</span> 和 <span class="mono">npm run dev</span>；<span class="mono">npm run typecheck</span> 和 <span class="mono">npm run build</span> 是常规检查。发布包必须在对应系统上通过 <span class="mono">npm run release:win</span>、<span class="mono">release:mac</span>、<span class="mono">release:linux</span> 构建。欢迎在 GitHub 上提 Bug、可复现的边界情况和小范围 PR；改观测者时请附上能证明事件顺序和降级行为的测试。项目使用 Apache-2.0。这是唯一一处链接指向 GitHub 的章节。',
+      '桌面程序在 <span class="mono">github.com/fatedawn/agent-session-center</span>。克隆下来后跑 <span class="mono">npm install</span> 和 <span class="mono">npm run dev</span>；<span class="mono">npm run typecheck</span> 和 <span class="mono">npm run build</span> 是常规检查。发布包必须在对应系统上通过 <span class="mono">npm run release:win</span>、<span class="mono">release:mac</span>、<span class="mono">release:linux</span> 构建。欢迎在 GitHub 上提 Bug、可复现的边界情况和小范围 PR；改观测者时请附上能证明事件顺序和降级行为的测试。项目使用 Apache-2.0。这是唯一一处链接指向 GitHub 的章节。',
 
     'pd.s10.title': '常见问题',
     'pd.s10.q1': '费用是怎么算出来的？',
@@ -376,7 +376,7 @@
     'pdl.unsigned.body':
       '没有任何平台带代码签名，所以系统会在首次启动时拦一下。Windows 上 SmartScreen 会弹提示：选「更多信息」，再选「仍要运行」。macOS 上 Gatekeeper 会拦下应用：macOS 15 及之后，被拦一次后进「系统设置 → 隐私与安全性」点「仍要打开」；macOS 10.14 到 14 上，右键点应用选「打开」。Linux 包本来就不需要签名。这些都不是疏忽 —— 签名有计划但尚未申请，在此之前，让下载可核对的东西是那份 SHA-256。',
     'pdl.autoupdate':
-      '应用会从项目在 GitHub 上的 Release 自动更新，所以即便安装包由本站提供，新版本仍会通过应用内更新到达。<span class="mono">ASC_DISABLE_UPDATES=1</span> 可以关掉这个检查。',
+      '应用在启动时检查项目的 GitHub Releases，并在应用内提示新版本；它绝不静默安装。本站提供的是安装包本身。设 <span class="mono">ASC_DISABLE_UPDATES=1</span> 可以完全跳过这次检查。',
     'pdl.steps.title': '下载之后',
     'pdl.steps.win':
       '运行安装包；SmartScreen 提示时选「更多信息」再选「仍要运行」。从开始菜单启动 ASC（敲 asc 就能搜到），等第一次 CLI 扫描跑完。选一个 agent，创建会话。',
@@ -385,7 +385,7 @@
     'pdl.steps.linux':
       'AppImage 的话，先让它可执行再运行；.deb 的话用 apt 安装。启动 ASC，等第一次扫描结束，然后开始一场会话。',
     'pdl.note':
-      '文档、更新日志和安装包都在本站内；页头那颗 GitHub 图标，是指向仓库的唯一出口。',
+      '文档、更新日志和下载都在本站内；页头与页脚的 GitHub 图标指向仓库。',
 
     /* ── changelog.html ── */
     'pc.doc.title': 'Agent Session Center —— 更新日志',
@@ -393,10 +393,10 @@
       'Agent Session Center 的版本说明，最新在前：1.0.0 到 1.0.3 分别改了什么。',
     'pc.h1': '更新日志',
     'pc.lede':
-      'Agent Session Center 的每一次公开发布，最新在前。同一份列表也维护在仓库的 CHANGELOG.md 里；本页和那个文件应当一致。',
+      '从 1.0.0 起的每一次公开发布，最新在前。同一份列表也维护在仓库的 CHANGELOG.md 里，那里还包含 1.0 之前的历史。',
     'pc.noRelease.title': '没有可显示的版本',
     'pc.noRelease.body':
-      '版本数据没能加载出来。完整历史在仓库的 CHANGELOG.md 里，安装包在下载页。',
+      '版本数据没能加载出来。完整历史（含 1.0 之前）在仓库的 CHANGELOG.md 里，安装包在下载页。',
     'pc.downloadCta': '下载最新版本',
     'pc.foot.note':
       '这是桌面应用的版本说明，中英双语。本页的更新数据随站点一起构建。',
@@ -404,9 +404,9 @@
     /* ── 落地页演示区块（index.html） ── */
     'pld.demo.title': '看它跑起来',
     'pld.demo.body':
-      '下面这段录屏用 46 秒走完整条流程：8 个 agent 的会话历史、AI 查找、一键恢复、按 agent 的用量，以及手机上的一次飞书审批。',
+      '下面这段录屏用 46 秒走了一遍真实操作：会话历史、AI 查找、一键恢复、按 agent 的用量，以及手机上的一次飞书审批。',
     'pld.demo.play': '全屏播放',
     'pld.demo.simulator': '打开交互式演示',
-    'pld.demo.note': '录屏就是真实应用，未经剪辑。'
+    'pld.demo.note': '录屏是真实应用。'
   })
 })()
