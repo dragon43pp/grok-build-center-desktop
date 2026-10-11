@@ -1148,29 +1148,9 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 
 .foot-links a:hover { color: var(--ink); }
 
-/* ─────────────── demo section (index) ───────────────
-   The demo recording is the largest thing on the page on purpose: it takes the full
-   prose width, where the hero recording sits in one column of the two-column hero. */
-
-.lp-demo { padding-top: 64px; }
-
-.lp-demo-shot {
-  margin: 24px 0 0;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--screen);
-}
-
-.lp-demo-shot video {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.lp-demo-cta { margin: 18px 0 0; }
-
-.lp-demo .hero-note { margin-top: 16px; max-width: 72ch; }
+/* These rules served the demo section that was removed from the landing page; kept,
+   they would style an element that can no longer appear, now that the recording lives
+   in the hero. */
 
 /* ─────────────── documentation page ───────────────
    One long text page: a table of contents in a left rail on wide screens, the prose in

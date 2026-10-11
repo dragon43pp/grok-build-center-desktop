@@ -1,10 +1,10 @@
 /* Fullscreen wiring for the landing page's hero video.
  *
  * The site is served with CSP script-src 'self', so there is no inline handler here
- * and no inline script on the page. The button requests fullscreen on the <video>
- * itself; if the Fullscreen API is missing, or the request rejects, the file is
- * opened in a new tab instead. It must never leave an uncaught error behind, so every
- * path is wrapped.
+ * and no inline script on the page. The hero's fullscreen button requests fullscreen
+ * on the <video> itself; if the Fullscreen API is missing, or the request rejects, the
+ * file is opened in a new tab instead. It must never leave an uncaught error behind, so
+ * every path is wrapped.
  *
  * Loaded on index.html after landing.js (which applies the language). */
 ;(function () {
@@ -30,7 +30,7 @@
   }
 
   function wire() {
-    var button = document.querySelector('.lp-demo-full')
+    var button = document.querySelector('.lp-hero-full')
     var video = document.querySelector('.lp-hero-shot video')
     if (!button || !video) return
 
