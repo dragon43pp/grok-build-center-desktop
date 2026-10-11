@@ -23,7 +23,25 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
+
+
+def _repo_root():
+    """仓库根只能问 git，不能按脚本所在目录的层数推。
+
+    这个脚本会被拷到仓库的任意位置（`tools/`、`hub/tools/`……）。早期实现用
+    `dirname(dirname(__file__))` 猜根目录，放在 `hub/tools/` 时得到的是 `hub/`，
+    而 `git ls-tree -r` 在子目录里跑会被那个前缀截断并**去掉前缀**：本仓库
+    667 个文件的树只映射出 70 个、且路径全错，更早的提交甚至映射成空树，
+    建 tree 直接被 API 拒掉（`Invalid tree info`）。根目录问 git 就没有这个假设。
+    """
+    r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                       cwd=HERE, capture_output=True)
+    if r.returncode == 0 and r.stdout.strip():
+        return os.path.realpath(r.stdout.decode("utf-8", "replace").strip())
+    return os.path.dirname(HERE)
+
+
+ROOT = _repo_root()
 
 
 def git(*args, binary=False):
@@ -116,6 +134,8 @@ def main():
     ap.add_argument("--ref", default="main")
     ap.add_argument("--from", dest="start", default=None,
                     help="从这个祖先开始推（默认推全部历史直到 HEAD）")
+    ap.add_argument("--seed", default=None,
+                    help="远端已有的提交 sha；预填 blob 缓存，内容未变的 blob 全部跳过上传")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -134,6 +154,21 @@ def main():
 
     blob_cache = {}
     api_calls = 0
+
+    """种子：把远端已有树里的 blob sha 预填进缓存。
+
+    blob 是内容寻址的，远端已存在的 blob 提交上去也只会得到同一个 sha，
+    所以凡是 sha 命中的一律不用上传。一个只改了一两个文件的提交，原本要把
+    整棵树（本仓库 667 个 blob）重新传一遍，有了种子就只剩真正变化的那些。
+    """
+    if a.seed:
+        data = gh_api("/repos/%s/git/trees/%s?recursive=1" % (a.repo, a.seed))
+        for entry in data.get("tree", []):
+            if entry.get("type") == "blob" and entry.get("sha"):
+                blob_cache.setdefault(entry["sha"], entry["sha"])
+        print("种子   %s -> 预填 %d 个 blob" % (a.seed[:8], len(blob_cache)))
+        if data.get("truncated"):
+            print("      [!!] 种子树被截断，未预填的部分会照常上传")
 
     for idx, sha in enumerate(revs, 1):
         c = read_commit(sha)
