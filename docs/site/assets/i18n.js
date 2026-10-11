@@ -43,7 +43,7 @@
       'l.hero.title': 'Eight coding agents. One place where every session is findable.',
       'l.hero.lede':
         'Every CLI writes its sessions somewhere else. Agent Session Center puts them in one desktop app: browse and search history, resume with one click, see tokens and cost — and when an agent stalls on a permission prompt, Feishu pushes it to your phone.',
-      'l.hero.cta.download': 'Download v1.0.3',
+      'l.hero.cta.download': 'Download v1.0.4',
       'l.hero.cta.demo': 'Try the live demo',
       'l.hero.note':
         'The downloads are unsigned; the release page publishes SHA-256 for every asset. Your terminals stay exactly as they are — ASC reads event streams, not your screen.',
@@ -90,7 +90,7 @@
         'The builds are unsigned; every release publishes SHA-256 so you can verify what you run. The whole product is Apache-2.0 on GitHub.',
       'l.dl.title': 'Download',
       'l.dl.lede':
-        'v1.0.3 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
+        'v1.0.4 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
       'l.dl.cta': 'Get the latest release',
       'l.dl.src': 'Read the source',
       'l.foot.upstream':
@@ -233,7 +233,7 @@
       'l.hero.title': '8 个 Coding Agent，一个找得到每场会话的地方。',
       'l.hero.lede':
         '每个 CLI 都把会话写在不同的地方。Agent Session Center 把它们收进一个桌面应用：浏览和搜索历史、一键恢复、看 token 和费用 —— agent 卡在权限确认上时，飞书把它推到你的手机上。',
-      'l.hero.cta.download': '下载 v1.0.3',
+      'l.hero.cta.download': '下载 v1.0.4',
       'l.hero.cta.demo': '在线体验',
       'l.hero.note':
         '下载包未签名，Release 页公布每个资产的 SHA-256。你的终端原样不动 —— ASC 读的是事件流，不是你的屏幕。',
@@ -280,7 +280,7 @@
         '构建未签名；每个 Release 公布 SHA-256，跑什么自己核得清。整个产品在 GitHub 上，Apache-2.0。',
       'l.dl.title': '下载',
       'l.dl.lede':
-        'v1.0.3，Windows、Linux、macOS。下载即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，数据不离开你的电脑。',
+        'v1.0.4，Windows、Linux、macOS。下载即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，数据不离开你的电脑。',
       'l.dl.cta': '获取最新版本',
       'l.dl.src': '看源码',
       'l.foot.upstream':

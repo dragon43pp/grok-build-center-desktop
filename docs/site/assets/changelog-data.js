@@ -14,6 +14,16 @@
     /* ─────────────────────────── English ─────────────────────────── */
     en: [
       {
+        tag: '1.0.4',
+        date: '2026-10-11',
+        title: 'A smaller installer, and Chinese-first docs',
+        bullets: [
+          'The Windows installer drops from 93.95 MiB to 81.78 MiB (-12.95%) with no feature removed. Eight Electron runtime files the app never loads are gone (dxcompiler.dll, dxil.dll, d3dcompiler_47.dll, debug.log, chrome_200_percent.pak and the SwiftShader trio, 38,498,255 bytes uncompressed), along with node_modules dead weight that took app.asar from 37,777,655 to 24,439,265 bytes.',
+          'What left the package: the Feishu SDK\'s ESM twin, node-pty\'s compile-time trees and its win32-arm64 prebuild, protobufjs\'s standalone browser bundle, and every source map. A new afterPack gate reads the app.asar entry list and aborts the build if any of them returns.',
+          'The README, CHANGELOG and release notes now lead with Chinese, with the English half in the same document after a rule.'
+        ]
+      },
+      {
         tag: '1.0.3',
         date: '2026-10-10',
         title: 'The 16 bundled themes that never rendered',
@@ -63,6 +73,16 @@
 
     /* ─────────────────────────── 简体中文 ─────────────────────────── */
     zh: [
+      {
+        tag: '1.0.4',
+        date: '2026-10-11',
+        title: '更小的安装包，中文优先的文档',
+        bullets: [
+          'Windows 安装包从 93.95 MiB 降到 81.78 MiB（−12.95%），功能一个没少。应用从不加载的 8 个 Electron 运行时文件被裁掉（dxcompiler.dll、dxil.dll、d3dcompiler_47.dll、debug.log、chrome_200_percent.pak 与 SwiftShader 三件套，未压缩合计 38,498,255 字节），再加上 node_modules 死重，app.asar 从 37,777,655 字节降到 24,439,265 字节。',
+          '不再进包的东西：飞书 SDK 的 ESM 双胞胎、node-pty 的编译期目录与 win32-arm64 prebuild、protobufjs 的独立浏览器 bundle，以及全部 source map。新增的 afterPack 门禁会读取 app.asar 条目清单，一旦它们回来就直接中止打包。',
+          'README、CHANGELOG 与 Release 正文改为中文优先，英文放在同一篇文档的 --- 之后。'
+        ]
+      },
       {
         tag: '1.0.3',
         date: '2026-10-10',
