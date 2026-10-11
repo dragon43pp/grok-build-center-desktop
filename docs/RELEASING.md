@@ -56,6 +56,31 @@ keep rebuilding from source.
 
 `scripts/assert-packaged-tray-assets.cjs` runs inside electron-builder's `afterPack` phase, so even direct packaging cannot silently omit tray assets. `scripts/verify-packaged-tray.cjs` performs the runtime Tray check. `scripts/release-win.ps1` composes all release checks and copies the verified artifacts.
 
+### When a local build disagrees with CI
+
+The Windows and macOS CI jobs run `npm ci --ignore-scripts` and never compile `node-pty`, so their
+`node_modules` holds only what the packages ship. A developer's tree can hold more, and anything that
+survives the `build.files` rules gets packaged:
+
+- `node_modules/node-pty/build` — left behind by any compile attempt. It measured 268,930 bytes on
+  disk and 241,374 bytes inside `app.asar`. It is deliberately **not** excluded by the rules, because
+  Linux needs it: `node-pty` ships no Linux prebuild, so the Linux job compiles into `build/Release`.
+- `debug.log` in the downloaded Electron distribution — 148 bytes. It is on the pruner's list either
+  way, but it exists only after a local download, so the pruner reports eight files locally and seven
+  in CI while reporting a slightly different byte total.
+
+Measured on the 1.0.4 release: the CI installer is 85,724,875 bytes, a local one 85,734,229, and two
+consecutive local builds of the same tree differ from each other by 63 bytes. Two CI builds of the
+same commit differ too — 85,724,875 against 85,724,880, with different SHA-256 — because packaging is
+not byte-reproducible. Two consequences:
+
+- **Never quote an installer's byte size in a document that ships inside that installer.** The
+  `## [x.y.z]` section of `CHANGELOG.md` is injected into `latest.yml`, `latest-linux.yml` and
+  `latest-mac.yml` as `releaseNotes` and shown in the in-app update notice, so a byte count there is
+  stale the moment it is written. Give MiB and a percentage, and point at the `.sha256`.
+- **Take every published size from the Release asset, never from `artifacts/`.** The workflow log only
+  prints MiB to two decimals; the exact size and hash have to come from the attached file.
+
 ## Delivery checklist
 
 1. Run `npm run release:win` and require a zero exit code.
