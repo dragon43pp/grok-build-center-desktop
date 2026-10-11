@@ -39,7 +39,7 @@
       'l.nav.theme': 'Toggle theme',
       'l.hero.cta.docs': 'Read the docs',
       'l.hero.kicker': 'Open source · Apache-2.0 · Windows / Linux / macOS',
-      'l.hero.title': 'Eight coding agents. One place where every session is findable.',
+      'l.hero.title': 'A center for every session: findable, resumable, reachable.',
       'l.hero.cta.download': 'Download v1.0.4',
       'l.hero.note':
         'The downloads are unsigned; the release page publishes SHA-256 for every asset. Your terminals stay exactly as they are — ASC reads event streams, not your screen.',
@@ -224,7 +224,7 @@
       'l.nav.theme': '切换主题',
       'l.hero.cta.docs': '查看文档',
       'l.hero.kicker': '开源 · Apache-2.0 · Windows / Linux / macOS',
-      'l.hero.title': '8 个 Coding Agent，一个找得到每场会话的地方。',
+      'l.hero.title': '找得到、能恢复、能远程连接每场会话的管理中心',
       'l.hero.cta.download': '下载 v1.0.4',
       'l.hero.note':
         '下载包未签名，Release 页公布每个资产的 SHA-256。你的终端原样不动 —— ASC 读的是事件流，不是你的屏幕。',

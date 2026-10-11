@@ -12,8 +12,10 @@ const { chromium } = require('playwright')
    (point them at a throwaway static server over dist/demo-site) before anything is
    deployed, and then run again against the domains that are actually serving. */
 const SITES = [
-  { name: 'zh', origin: process.env.ASC_SITE_ZH || 'https://asc.chupian.cloud', lang: 'zh-CN' },
-  { name: 'en', origin: process.env.ASC_SITE_EN || 'https://asc-en.chupian.cloud', lang: 'en' }
+  { name: 'zh', origin: process.env.ASC_SITE_ZH || 'https://asc.chupian.cloud', lang: 'zh-CN',
+    headline: '找得到、能恢复、能远程连接每场会话的管理中心' },
+  { name: 'en', origin: process.env.ASC_SITE_EN || 'https://asc-en.chupian.cloud', lang: 'en',
+    headline: 'A center for every session: findable, resumable, reachable.' }
 ]
 
 /* Strings that used to be on the landing page and must not come back: the sections that
@@ -75,6 +77,9 @@ function box(rect) {
     check('no download block left', await page.$('.lp-download') === null)
     check('no docs block left', await page.$('.lp-docs') === null)
     check('no closing note left', await page.$('.hero-note') === null)
+    /* The footer went with the rest of what sat under the rule. The bar above already
+       carries every destination it repeated, so the page ends at the recording. */
+    check('no footer on the landing page', await page.$('.foot') === null)
 
     /* The recording is the point of the page now, so give it a chance to report its own
        dimensions before anything is measured — preload="metadata" should make that
@@ -84,8 +89,8 @@ function box(rect) {
       return video !== null && video.videoWidth > 0
     }, { timeout: 20000 })
 
-    /* The hero is two columns: the recording on the left, taking two thirds, and the
-       statement on the right. */
+    /* The hero is two columns: the recording on the left, taking most of the row, and
+       the statement on the right. */
     const hero = await page.evaluate(() => {
       const el = document.querySelector('.lp-hero')
       const style = getComputedStyle(el)
@@ -107,6 +112,7 @@ function box(rect) {
           src: (video.querySelector('source') || {}).src || ''
         } : null,
         icon: icon ? { box: icon.getBoundingClientRect().toJSON(), natural: icon.naturalWidth, src: icon.currentSrc } : null,
+        headline: (document.querySelector('.lp-hero h1').textContent || '').trim(),
         h1Size: Math.round(parseFloat(getComputedStyle(document.querySelector('.lp-hero h1')).fontSize)),
         balance: getComputedStyle(document.querySelector('.lp-hero h1')).textWrap || getComputedStyle(document.querySelector('.lp-hero h1')).textWrapStyle || '',
         pageHeight: Math.round(document.body.scrollHeight)
@@ -121,10 +127,10 @@ function box(rect) {
       hero.media && hero.text ? box(hero.media).x + ' < ' + box(hero.text).x : 'missing')
     check('the recording column is the wider one', hero.media && hero.text && hero.media.width > hero.text.width,
       hero.media && hero.text ? Math.round(hero.media.width) + ' > ' + Math.round(hero.text.width) : 'missing')
-    check('the recording takes about two thirds of the row',
-      hero.media && hero.text && hero.media.width / (hero.media.width + hero.text.width + 44) > 0.6,
-      hero.media && hero.text ? (hero.media.width / (hero.media.width + hero.text.width + 44)).toFixed(3) : 'missing')
-    check('the recording is enlarged, not the old narrow column', hero.video && hero.video.width >= 750, hero.video && Math.round(hero.video.width))
+    check('the recording takes most of the row',
+      hero.media && hero.text && hero.media.width / (hero.media.width + hero.text.width + 28) > 0.72,
+      hero.media && hero.text ? (hero.media.width / (hero.media.width + hero.text.width + 28)).toFixed(3) : 'missing')
+    check('the recording is enlarged, not the old narrow column', hero.video && hero.video.width >= 890, hero.video && Math.round(hero.video.width))
     check('the recording starts playing', hero.video && hero.video.paused === false, hero.video && String(hero.video.paused))
     check('the recording is operable', hero.video && hero.video.controls === true)
     check('the recording has decoded dimensions', hero.video && hero.video.videoWidth > 0, hero.video && String(hero.video.videoWidth))
@@ -136,6 +142,9 @@ function box(rect) {
       hero.icon ? Math.round(hero.icon.box.width) + 'x' + Math.round(hero.icon.box.height) : 'missing')
     console.log('      home type: h1=' + hero.h1Size + ' wrap=' + hero.balance + ' page height=' + hero.pageHeight)
     check('the hero headline balances its lines', /balance/.test(hero.balance), hero.balance)
+    /* The headline is the whole sell, so it is pinned by value rather than by shape: a
+       silent revert to the old wording has to fail a test, not just look different. */
+    check('the headline says what the product promises', hero.headline === site.headline, hero.headline)
 
     /* The platform line is tracked-out uppercase, the longest line in the column. Measure
        the line boxes rather than the declaration: balance is the intent, but an orphaned

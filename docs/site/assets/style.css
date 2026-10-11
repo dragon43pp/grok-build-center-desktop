@@ -842,13 +842,18 @@ body.lp .foot {
    what keeps their edges on the same line as the recording. Scoped to lp-home: every
    other page here is prose, and prose gets worse as the measure grows. */
 body.lp-home main {
-  max-width: calc(var(--page) + 280px);
+  max-width: calc(var(--page) + 420px);
+  /* The footer is gone from this page, so the last thing on it is the recording. The
+     shared 72px bottom padding would leave a hand's width of nothing under a screen that
+     is supposed to be the whole page. */
+  padding-bottom: 28px;
 }
 
-body.lp-home .topbar,
-body.lp-home .foot {
-  padding-left: max(20px, calc((100vw - var(--page) - 280px) / 2));
-  padding-right: max(20px, calc((100vw - var(--page) - 280px) / 2));
+/* The bar follows the same arithmetic, which is what keeps its edges on the same line as
+   the recording. No footer term here: this page has none. */
+body.lp-home .topbar {
+  padding-left: max(20px, calc((100vw - var(--page) - 420px) / 2));
+  padding-right: max(20px, calc((100vw - var(--page) - 420px) / 2));
 }
 
 /* pain / truth cards */
@@ -1106,14 +1111,16 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 }
 
 @media (min-width: 980px) {
-  /* The recording takes two thirds of the row and the text one. The media comes first in
-     the source, so the order on a phone is the order of the page: the recording, then
-     what this is. The text column keeps a floor, because at the narrow end of this range
-     an unfloored third would squeeze the headline into a ribbon. */
+  /* The recording takes most of the row and the text the rest of it. The media comes
+     first in the source, so the order on a phone is the order of the page: the recording,
+     then what this is. The text column keeps a floor, because at the narrow end of this
+     range an unfloored slice would squeeze the headline into a ribbon. The vertical
+     padding is deliberately small: with no footer under it, the recording is the page,
+     and every pixel of padding here is a pixel it does not get. */
   .lp-hero {
-    grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
-    gap: 44px;
-    padding: 64px 0;
+    grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+    gap: 28px;
+    padding: 24px 0 28px;
   }
 }
 
