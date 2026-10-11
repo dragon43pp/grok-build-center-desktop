@@ -972,8 +972,14 @@ body.lp .foot {
 /* features.html carries the long-form text the landing page no longer does, so the prose
    and the screenshots are both a size up. */
 body.lp-features .lp-features-hero { padding: 64px 0 8px; }
+
+/* The enlargement applies to the reading text, not to the ranking of the headings: a
+   page title stays below the landing hero, and a block heading stays below the section
+   heading it belongs to. Enlarging the block heading to the section size flattened the
+   outline until a subsection read like the section. */
+body.lp-features .lp-features-hero h1 { font-size: clamp(28px, 3.2vw, 36px); }
 body.lp-features .lp-features-hero .lede { font-size: 16px; max-width: 78ch; }
-body.lp-features .lp-block h3 { font-size: clamp(21px, 2.8vw, 26px); }
+body.lp-features .lp-block h3 { font-size: clamp(18px, 2.2vw, 22px); }
 body.lp-features .lp-body { font-size: 15.5px; line-height: 1.7; }
 body.lp-features .lp-card p { font-size: 14.5px; }
 
@@ -1108,6 +1114,9 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
   font-size: clamp(30px, 3.6vw, 44px);
   letter-spacing: -1.2px;
   margin: 0 0 16px;
+  /* Which side of a line a Chinese headline breaks on is not something to hand-place:
+     balancing the lines keeps the ragged edge even in both languages. */
+  text-wrap: balance;
 }
 
 .lp-hero .lede { font-size: 15px; margin: 0 0 20px; }
