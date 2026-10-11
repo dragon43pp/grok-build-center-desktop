@@ -202,8 +202,7 @@
 
     /* ── landing hero video controls (index.html) ── */
     'pld.demo.play': 'Play full screen',
-    'pld.demo.simulator': 'Open the interactive demo',
-    'pld.demo.note': 'The recording is the real application.'
+    'pld.demo.simulator': 'Open the interactive demo'
   })
 
   /* ─────────────────────────── 简体中文 ─────────────────────────── */
@@ -393,7 +392,6 @@
 
     /* ── 落地页 hero 视频控件（index.html） ── */
     'pld.demo.play': '全屏播放',
-    'pld.demo.simulator': '打开交互式演示',
-    'pld.demo.note': '录屏是真实应用。'
+    'pld.demo.simulator': '打开交互式演示'
   })
 })()

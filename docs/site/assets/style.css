@@ -837,6 +837,20 @@ body.lp .foot {
   padding-right: max(20px, calc((100vw - var(--page) - 160px) / 2));
 }
 
+/* The home page is one hero and nothing else, so it can use more of a wide screen than a
+   page of running text should. The bar and the footer follow the same padding, which is
+   what keeps their edges on the same line as the recording. Scoped to lp-home: every
+   other page here is prose, and prose gets worse as the measure grows. */
+body.lp-home main {
+  max-width: calc(var(--page) + 280px);
+}
+
+body.lp-home .topbar,
+body.lp-home .foot {
+  padding-left: max(20px, calc((100vw - var(--page) - 280px) / 2));
+  padding-right: max(20px, calc((100vw - var(--page) - 280px) / 2));
+}
+
 /* pain / truth cards */
 
 .lp-cards {
@@ -959,14 +973,6 @@ body.lp .foot {
 
 .lp-download-cta { justify-content: center; }
 
-/* docs */
-
-/* The landing page closes with a plain left-aligned link row. Centring it too would put
-   the download block and the docs block in the same shape twice in a row. */
-.lp-docs { padding: 56px 0 0; }
-.lp-docs .section-lede { margin-bottom: 20px; }
-.lp-docs-cta { margin: 0; }
-
 /* features page */
 
 /* features.html carries the long-form text the landing page no longer does, so the prose
@@ -976,8 +982,12 @@ body.lp-features .lp-features-hero { padding: 64px 0 8px; }
 /* The enlargement applies to the reading text, not to the ranking of the headings: a
    page title stays below the landing hero, and a block heading stays below the section
    heading it belongs to. Enlarging the block heading to the section size flattened the
-   outline until a subsection read like the section. */
-body.lp-features .lp-features-hero h1 { font-size: clamp(28px, 3.2vw, 36px); }
+   outline until a subsection read like the section.
+
+   Both clamps stay under the hero's on every viewport, not just the one this was checked
+   at: a lower floor, a slower slope and a lower ceiling than the hero's, so the ordering
+   cannot invert at a width nobody looked at. */
+body.lp-features .lp-features-hero h1 { font-size: clamp(24px, 2.6vw, 32px); }
 body.lp-features .lp-features-hero .lede { font-size: 16px; max-width: 78ch; }
 body.lp-features .lp-block h3 { font-size: clamp(18px, 2.2vw, 22px); }
 body.lp-features .lp-body { font-size: 15.5px; line-height: 1.7; }
@@ -1096,10 +1106,14 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 }
 
 @media (min-width: 980px) {
+  /* The recording takes two thirds of the row and the text one. The media comes first in
+     the source, so the order on a phone is the order of the page: the recording, then
+     what this is. The text column keeps a floor, because at the narrow end of this range
+     an unfloored third would squeeze the headline into a ribbon. */
   .lp-hero {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 52px;
-    padding: 72px 0 40px;
+    grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+    gap: 44px;
+    padding: 64px 0;
   }
 }
 
@@ -1111,17 +1125,17 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 }
 
 .lp-hero h1 {
-  font-size: clamp(30px, 3.6vw, 44px);
+  font-size: clamp(28px, 2.9vw, 38px);
   letter-spacing: -1.2px;
-  margin: 0 0 16px;
+  margin: 0 0 24px;
   /* Which side of a line a Chinese headline breaks on is not something to hand-place:
      balancing the lines keeps the ragged edge even in both languages. */
   text-wrap: balance;
 }
 
-.lp-hero .lede { font-size: 15px; margin: 0 0 20px; }
-.lp-hero .cta-row { margin: 0 0 20px; }
-.lp-hero .hero-note { max-width: 44ch; }
+/* The headline runs straight into the buttons: the paragraph that used to sit between
+   them is gone, so the row carries no margin of its own. */
+.lp-hero .cta-row { margin: 0; }
 
 .lp-hero-shot {
   margin: 0;
@@ -1134,7 +1148,6 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 .lp-hero-shot video { display: block; width: 100%; height: auto; }
 
 .lp-hero-media { display: grid; gap: 12px; }
-.lp-hero-media-cta { margin: 0; }
 
 .lp-platform { margin: 18px 0 0; }
 

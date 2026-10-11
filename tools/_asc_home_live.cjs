@@ -16,9 +16,16 @@ const SITES = [
   { name: 'en', origin: process.env.ASC_SITE_EN || 'https://asc-en.chupian.cloud', lang: 'en' }
 ]
 
-/* Strings from the sections that moved. If any of these is still on the landing page,
-   the move did not happen. Checked as rendered text, not as markup. */
-const MOVED_AWAY = ['Does this sound familiar?', '这些场景眼熟吗？', 'Where it draws the line', '它的边界画在哪', 'Watch it run', '看它跑起来']
+/* Strings that used to be on the landing page and must not come back: the sections that
+   moved to features.html, the hero paragraph that was cut to one sentence, and the closing
+   note. Checked as rendered text, not as markup. */
+const MOVED_AWAY = [
+  'Does this sound familiar?', '这些场景眼熟吗？',
+  'Where it draws the line', '它的边界画在哪',
+  'Watch it run', '看它跑起来',
+  'Every CLI writes its sessions somewhere else', '每个 CLI 都把会话写在不同的地方',
+  'The recording is the real application.', '录屏是真实应用。'
+]
 
 let failures = 0
 function check(label, ok, detail) {
@@ -58,13 +65,16 @@ function box(rect) {
     check('html lang is ' + site.lang, await page.getAttribute('html', 'lang') === site.lang,
       await page.getAttribute('html', 'lang'))
 
-    /* Exactly three blocks, in order. */
+    /* One block and nothing else. The landing page is the recording, the statement and
+       the two ways in; the download and docs blocks that used to run underneath were
+       removed, and their buttons are in the hero. */
     const sections = await page.$$eval('main > section', els => els.map(el => el.className))
     console.log('      main sections: ' + JSON.stringify(sections))
-    check('landing page has exactly three blocks', sections.length === 3, String(sections.length))
-    check('block 1 is the hero', /lp-hero/.test(sections[0] || ''), sections[0])
-    check('block 2 is the download block', /lp-download/.test(sections[1] || ''), sections[1])
-    check('block 3 is the docs block', /(^|\s)lp-docs(\s|$)/.test(sections[2] || ''), sections[2])
+    check('the landing page is one block', sections.length === 1, String(sections.length))
+    check('that block is the hero', /lp-hero/.test(sections[0] || ''), sections[0])
+    check('no download block left', await page.$('.lp-download') === null)
+    check('no docs block left', await page.$('.lp-docs') === null)
+    check('no closing note left', await page.$('.hero-note') === null)
 
     /* The recording is the point of the page now, so give it a chance to report its own
        dimensions before anything is measured — preload="metadata" should make that
@@ -74,8 +84,8 @@ function box(rect) {
       return video !== null && video.videoWidth > 0
     }, { timeout: 20000 })
 
-    /* The hero is two columns and the text column comes first — the layout that used to
-       swap them with a CSS order is what this guards. */
+    /* The hero is two columns: the recording on the left, taking two thirds, and the
+       statement on the right. */
     const hero = await page.evaluate(() => {
       const el = document.querySelector('.lp-hero')
       const style = getComputedStyle(el)
@@ -98,8 +108,8 @@ function box(rect) {
         } : null,
         icon: icon ? { box: icon.getBoundingClientRect().toJSON(), natural: icon.naturalWidth, src: icon.currentSrc } : null,
         h1Size: Math.round(parseFloat(getComputedStyle(document.querySelector('.lp-hero h1')).fontSize)),
-        h2Size: Math.round(parseFloat(getComputedStyle(document.querySelector('.lp-docs h2')).fontSize)),
-        balance: getComputedStyle(document.querySelector('.lp-hero h1')).textWrap || getComputedStyle(document.querySelector('.lp-hero h1')).textWrapStyle || ''
+        balance: getComputedStyle(document.querySelector('.lp-hero h1')).textWrap || getComputedStyle(document.querySelector('.lp-hero h1')).textWrapStyle || '',
+        pageHeight: Math.round(document.body.scrollHeight)
       }
     })
     console.log('      hero tracks=' + hero.tracks + ' ' + hero.columns)
@@ -107,11 +117,14 @@ function box(rect) {
     console.log('      video=' + JSON.stringify(hero.video && { w: Math.round(hero.video.width), h: Math.round(hero.video.height), vw: hero.video.videoWidth }))
 
     check('hero is two columns on a 1280 viewport', hero.tracks === 2, String(hero.tracks))
-    check('text column is on the left', hero.text && hero.media && hero.text.x < hero.media.x,
-      hero.text && hero.media ? box(hero.text).x + ' < ' + box(hero.media).x : 'missing')
-    check('media column is the wider one', hero.media && hero.text && hero.media.width > hero.text.width,
+    check('the recording column is on the left', hero.text && hero.media && hero.media.x < hero.text.x,
+      hero.media && hero.text ? box(hero.media).x + ' < ' + box(hero.text).x : 'missing')
+    check('the recording column is the wider one', hero.media && hero.text && hero.media.width > hero.text.width,
       hero.media && hero.text ? Math.round(hero.media.width) + ' > ' + Math.round(hero.text.width) : 'missing')
-    check('the recording is enlarged, not the old narrow column', hero.video && hero.video.width >= 650, hero.video && Math.round(hero.video.width))
+    check('the recording takes about two thirds of the row',
+      hero.media && hero.text && hero.media.width / (hero.media.width + hero.text.width + 44) > 0.6,
+      hero.media && hero.text ? (hero.media.width / (hero.media.width + hero.text.width + 44)).toFixed(3) : 'missing')
+    check('the recording is enlarged, not the old narrow column', hero.video && hero.video.width >= 750, hero.video && Math.round(hero.video.width))
     check('the recording starts playing', hero.video && hero.video.paused === false, hero.video && String(hero.video.paused))
     check('the recording is operable', hero.video && hero.video.controls === true)
     check('the recording has decoded dimensions', hero.video && hero.video.videoWidth > 0, hero.video && String(hero.video.videoWidth))
@@ -121,10 +134,10 @@ function box(rect) {
       hero.icon ? hero.icon.natural + ' ' + hero.icon.src : 'missing')
     check('the hero icon is a 96px square', hero.icon && Math.round(hero.icon.box.width) === 96 && Math.round(hero.icon.box.height) === 96,
       hero.icon ? Math.round(hero.icon.box.width) + 'x' + Math.round(hero.icon.box.height) : 'missing')
-    console.log('      home type: h1=' + hero.h1Size + ' section h2=' + hero.h2Size + ' wrap=' + hero.balance)
-    check('the hero headline outranks the section headings on its own page', hero.h1Size > hero.h2Size,
-      hero.h1Size + ' > ' + hero.h2Size)
+    console.log('      home type: h1=' + hero.h1Size + ' wrap=' + hero.balance + ' page height=' + hero.pageHeight)
     check('the hero headline balances its lines', /balance/.test(hero.balance), hero.balance)
+    /* One screen, not a scroll: the guard against the page growing sections back. */
+    check('the landing page still fits on about one screen', hero.pageHeight < 1200, String(hero.pageHeight))
 
     /* The header brand image must be the real icon now, and the favicon must stay svg. */
     const brand = await page.$eval('a.brand img', el => ({ src: el.currentSrc, natural: el.naturalWidth, w: Math.round(el.getBoundingClientRect().width) }))
@@ -158,12 +171,11 @@ function box(rect) {
       nav.map(n => n.href).join(','))
     check('no Demo item remains', nav.every(n => !/Demo|演示/.test(n.text)))
 
-    /* Both buttons the hero promises, and the docs block's three. */
+    /* The two ways in, which are now the only links on the page besides the bar. */
     const heroCtas = await page.$$eval('.lp-hero-cta a', els => els.map(el => el.getAttribute('href')))
     check('hero offers download and docs', heroCtas.join(',') === './download.html,./docs.html', heroCtas.join(','))
-    const docsCtas = await page.$$eval('.lp-docs-cta a', els => els.map(el => el.getAttribute('href')))
-    check('docs block offers docs, changelog, the demo',
-      docsCtas.join(',') === './docs.html,./changelog.html,./simulator.html', docsCtas.join(','))
+    const mediaCtas = await page.$$eval('.lp-hero-media .cta-row a', els => els.map(el => el.getAttribute('href')))
+    check('the recording offers the interactive demo', mediaCtas.join(',') === './simulator.html', mediaCtas.join(','))
 
     await page.screenshot({ path: outDir + '/home-live-' + site.name + '.png', fullPage: true })
 

@@ -10,7 +10,7 @@
 <script src="./assets/theme.js"></script>
 <link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
 </head>
-<body class="lp">
+<body class="lp lp-home">
 
 <header class="topbar">
   <div class="topbar-left">
@@ -43,23 +43,13 @@
 
 <main id="top">
 
-  <!-- ─────────────────────────── hero: video ─────────────────────────── -->
+  <!-- ─────────────────────────── the whole landing page ───────────────────────────
+       One screen: the recording on the left, and on the right the mark, the one
+       sentence that says what this is, and the two ways in. The download and docs
+       blocks that used to run underneath are gone — their buttons are here, and
+       everything long-form lives on features.html. -->
 
   <section class="lp-hero">
-    <div class="lp-hero-text">
-      <img class="lp-hero-icon" src="./assets/icon/app-icon-256.png" width="96" height="96" alt="">
-      <h1 data-i18n="l.hero.title">Eight coding agents. One place where every session is findable.</h1>
-      <p class="lede" data-i18n="l.hero.lede">
-        Every CLI writes its sessions somewhere else. Agent Session Center puts them in one
-        desktop app: browse and search history, resume with one click, see tokens and cost —
-        and when an agent stalls on a permission prompt, Feishu pushes it to your phone.
-      </p>
-      <p class="cta-row lp-hero-cta">
-        <a class="btn btn-primary" href="./download.html" data-i18n="l.hero.cta.download">Download v1.0.4</a>
-        <a class="btn" href="./docs.html" data-i18n="l.hero.cta.docs">Read the docs</a>
-      </p>
-      <p class="kicker lp-platform" data-i18n="l.hero.kicker">Open source · Apache-2.0 · Windows / Linux / macOS</p>
-    </div>
     <div class="lp-hero-media">
       <figure class="lp-hero-shot">
         <!-- The real interface, recorded. 46 seconds, no sound, looping: the actual
@@ -68,35 +58,20 @@
           <source src="./assets/demo.mp4" type="video/mp4">
         </video>
       </figure>
-      <p class="cta-row lp-hero-media-cta">
+      <p class="cta-row">
         <button type="button" class="btn lp-hero-full" data-i18n="pld.demo.play">Play full screen</button>
         <a class="btn" href="./simulator.html" data-i18n="pld.demo.simulator">Open the interactive demo</a>
       </p>
-      <p class="hero-note" data-i18n="pld.demo.note">The recording is the real application.</p>
     </div>
-  </section>
-
-  <!-- ─────────────────────────── download ─────────────────────────── -->
-
-  <section class="blocks lp-download" aria-labelledby="dl-heading">
-    <h2 id="dl-heading" data-i18n="l.dl.title">Download</h2>
-    <p class="section-lede" data-i18n="l.dl.lede">v1.0.4 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.</p>
-    <p class="cta-row lp-download-cta">
-      <a class="btn btn-primary" href="./download.html" data-i18n="l.dl.cta">Get the latest release</a>
-      <a class="btn" href="./docs.html#s9" data-i18n="l.dl.src">Read the source</a>
-    </p>
-  </section>
-
-  <!-- ─────────────────────────── docs ─────────────────────────── -->
-
-  <section class="blocks lp-docs" id="docs" aria-labelledby="docs-heading">
-    <h2 id="docs-heading" data-i18n="l.docs.title">Documentation</h2>
-    <p class="section-lede" data-i18n="l.docs.lede">What it does and which agents it supports, install steps for Windows, Linux and macOS, and what to do when something goes wrong. The changelog records what changed in every release.</p>
-    <p class="cta-row lp-docs-cta">
-      <a class="btn btn-primary" href="./docs.html" data-i18n="l.hero.cta.docs">Read the docs</a>
-      <a class="btn" href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
-      <a class="btn" href="./simulator.html" data-i18n="pld.demo.simulator">Open the interactive demo</a>
-    </p>
+    <div class="lp-hero-text">
+      <img class="lp-hero-icon" src="./assets/icon/app-icon-256.png" width="96" height="96" alt="">
+      <h1 data-i18n="l.hero.title">Eight coding agents. One place where every session is findable.</h1>
+      <p class="cta-row lp-hero-cta">
+        <a class="btn btn-primary" href="./download.html" data-i18n="l.hero.cta.download">Download v1.0.4</a>
+        <a class="btn" href="./docs.html" data-i18n="l.hero.cta.docs">Read the docs</a>
+      </p>
+      <p class="kicker lp-platform" data-i18n="l.hero.kicker">Open source · Apache-2.0 · Windows / Linux / macOS</p>
+    </div>
   </section>
 
 </main>
