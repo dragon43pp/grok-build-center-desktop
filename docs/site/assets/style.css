@@ -1377,12 +1377,10 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
   margin-top: 28px;
 }
 
+/* The page offers exactly two builds, Windows and macOS, so the row is two wide at
+   every size that can hold two. A third track would leave a third of the row empty. */
 @media (min-width: 700px) {
   .dl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (min-width: 1080px) {
-  .dl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .dl-card {
