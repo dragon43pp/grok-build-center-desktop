@@ -2,6 +2,7 @@ const { existsSync, readdirSync } = require('node:fs')
 const { join } = require('node:path')
 const { listPackage } = require('@electron/asar')
 const assertPackagedTrayAssets = require('./assert-packaged-tray-assets.cjs')
+const assertNodeModulesTrimmed = require('./assert-node-modules-trimmed.cjs')
 
 function packagedResourcesDir(context) {
   if (context.electronPlatformName !== 'darwin') {
@@ -28,23 +29,19 @@ function packagedRuntimeDir(context) {
   return join(context.appOutDir, appBundle, 'Contents', 'MacOS')
 }
 
-// scripts/prune-electron-runtime.cjs removes these five from the packaged
-// runtime. None of them is ever loaded by the Windows build, but if one comes
-// back (for example because the pruner stops running) the installer silently
-// grows again, so this list is the gate that keeps them out. Keep it in sync
-// with that script.
-const PRUNED_RUNTIME_FILES = [
-  'dxcompiler.dll',
-  'dxil.dll',
-  'd3dcompiler_47.dll',
-  'debug.log',
-  'chrome_200_percent.pak'
-]
+// scripts/prune-electron-runtime.cjs removes these from the packaged runtime.
+// None of them is ever loaded by the Windows build, but if one comes back (for
+// example because the pruner stops running) the installer silently grows again,
+// so this is the gate that keeps them out. The list is read from the pruner
+// itself rather than duplicated, so the two cannot drift apart, and it stays
+// platform-aware: the SwiftShader trio is Windows-only, because on Linux
+// SwiftShader is the real fallback on a machine with no GPU driver.
+const { prunableFiles: PRUNED_RUNTIME_FILES } = require('./prune-electron-runtime.cjs')
 
 function assertRuntimePruned(context) {
   const runtimeDir = packagedRuntimeDir(context)
-  const present = PRUNED_RUNTIME_FILES.filter((filename) =>
-    existsSync(join(runtimeDir, filename))
+  const present = PRUNED_RUNTIME_FILES(context.electronPlatformName).filter(
+    (filename) => existsSync(join(runtimeDir, filename))
   )
   if (present.length > 0) {
     throw new Error(
@@ -138,4 +135,5 @@ exports.default = async function assertPackagedResources(context) {
   assertRuntimePruned(context)
   assertNoBundledDshRuntime(context)
   assertNoDevelopmentTrees(context)
+  await assertNodeModulesTrimmed.default(context)
 }

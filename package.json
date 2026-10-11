@@ -1,6 +1,6 @@
 {
   "name": "agent-session-center",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Session center for every AI coding agent — browse, resume, fork and handoff across Claude Code, Codex, OpenCode, Kimi, Pi, Antigravity and WorkBuddy, with Feishu push and mobile approval",
   "main": "out/main/index.js",
   "scripts": {
@@ -96,7 +96,14 @@
       "!tsconfig.node.tsbuildinfo",
       "!tsconfig.web.tsbuildinfo",
       "!electron.vite.config.ts",
-      "!electron.vite.config.*.mjs"
+      "!electron.vite.config.*.mjs",
+      "!node_modules/@larksuiteoapi/node-sdk/es{,/**/*}",
+      "!node_modules/protobufjs/dist{,/**/*}",
+      "!node_modules/node-pty/third_party{,/**/*}",
+      "!node_modules/node-pty/deps{,/**/*}",
+      "!node_modules/node-pty/src{,/**/*}",
+      "!node_modules/node-pty/prebuilds/win32-arm64{,/**/*}",
+      "!**/*.map"
     ],
     "extraResources": [
       {

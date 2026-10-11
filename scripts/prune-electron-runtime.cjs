@@ -23,6 +23,41 @@ const PRUNABLE_FILES = [
   'chrome_200_percent.pak'
 ]
 
+// Chromium's software WebGL backend. It is NOT the software compositor: when the
+// GPU process cannot start, Windows renders through ANGLE on D3D11 with the
+// Microsoft Basic Render Driver (WARP), which comes from the operating system.
+// That path was measured with and without these three files while forcing
+// software rendering (`--disable-gpu`) and the reported renderer string was
+// byte-for-byte identical — ANGLE (Microsoft, Microsoft Basic Render Driver
+// (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11) — with WebGL2 available either
+// way. The only configuration that changes is a user explicitly passing
+// `--use-angle=swiftshader`: WebGL2 then reports unavailable, src/terminal/
+// addons.ts catches it, records `webgl-unavailable` and falls back to the DOM
+// renderer, and the window still paints in full with no error. Removing them
+// therefore costs nothing on the default path and degrades gracefully on the one
+// path that names SwiftShader.
+//
+// Kept Windows-only on purpose: `vk_swiftshader_icd.json` exists on every
+// platform, and on Linux SwiftShader is the real fallback on machines with no
+// GPU driver, so the pruning must not reach it there.
+const WINDOWS_ONLY_PRUNABLE_FILES = [
+  'vk_swiftshader.dll',
+  'vulkan-1.dll',
+  'vk_swiftshader_icd.json'
+]
+
+/** The files this platform's package is allowed to drop. */
+function prunableFiles(platformName) {
+  if (platformName === 'win32') {
+    return [...PRUNABLE_FILES, ...WINDOWS_ONLY_PRUNABLE_FILES]
+  }
+  return PRUNABLE_FILES
+}
+
+// Exported so the afterPack gate reads the same list instead of keeping a
+// duplicate that can drift out of sync with this one.
+exports.prunableFiles = prunableFiles
+
 // The files above sit beside the executable, which for Windows is
 // context.appOutDir and for macOS is the MacOS directory inside the .app
 // bundle. This mirrors packagedResourcesDir in assert-packaged-resources.cjs.
@@ -41,7 +76,7 @@ exports.default = async function pruneElectronRuntime(context) {
   const runtimeDir = packagedRuntimeDir(context)
   const removed = []
   let removedBytes = 0
-  for (const filename of PRUNABLE_FILES) {
+  for (const filename of prunableFiles(context.electronPlatformName)) {
     const filePath = join(runtimeDir, filename)
     if (!existsSync(filePath)) continue
     removedBytes += statSync(filePath).size
