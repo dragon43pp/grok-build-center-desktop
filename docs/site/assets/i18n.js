@@ -33,7 +33,6 @@
         'Agent Session Center gathers the sessions of 8 AI coding agents — Claude Code, Codex CLI, OpenCode, Grok Build, Kimi Code, Pi, Antigravity and WorkBuddy — into one desktop app: browse, search, resume, and approve on your phone through Feishu.',
       'l.nav.home': 'Home',
       'l.nav.features': 'Features',
-      'l.nav.demo': 'Demo',
       'l.nav.changelog': 'Changelog',
       'l.nav.docs': 'Docs',
       'l.nav.download': 'Download',
@@ -93,6 +92,9 @@
         'v1.0.4 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
       'l.dl.cta': 'Get the latest release',
       'l.dl.src': 'Read the source',
+      'l.docs.title': 'Documentation',
+      'l.docs.lede':
+        'What it does and which agents it supports, install steps for Windows, Linux and macOS, and what to do when something goes wrong. The changelog records what changed in every release.',
       'l.foot.upstream':
         'Early prototype from UniRound-Tec/hrack (Apache-2.0); Agent Session Center is an independently maintained hard fork — see NOTICE.',
       'l.foot.demo':
@@ -223,7 +225,6 @@
         'Agent Session Center 把 8 个 AI Coding Agent（Claude Code、Codex CLI、OpenCode、Grok Build、Kimi Code、Pi、Antigravity、WorkBuddy）的会话收进一个桌面应用：浏览、搜索、一键恢复，审批通过飞书推到手机上。',
       'l.nav.home': '首页',
       'l.nav.features': '功能',
-      'l.nav.demo': '演示',
       'l.nav.changelog': '更新日志',
       'l.nav.docs': '文档',
       'l.nav.download': '下载',
@@ -283,6 +284,9 @@
         'v1.0.4，Windows、Linux、macOS。下载即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，数据不离开你的电脑。',
       'l.dl.cta': '获取最新版本',
       'l.dl.src': '看源码',
+      'l.docs.title': '文档',
+      'l.docs.lede':
+        '它能做什么、支持哪些 agent、在 Windows / Linux / macOS 上怎么装，以及出问题时怎么办。更新日志记录每个版本改了什么。',
       'l.foot.upstream':
         '早期原型源自 UniRound-Tec/hrack（Apache-2.0）；Agent Session Center 是独立维护的硬分叉，见 NOTICE。',
       'l.foot.demo': '截图为真实界面；模拟器页面的数据是编的。',

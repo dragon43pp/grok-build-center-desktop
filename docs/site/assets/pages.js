@@ -192,10 +192,15 @@
     'pc.foot.note':
       'Release notes for the desktop app, in both languages. The changelog data on this page is built into the site.',
 
-    /* ── landing page demo block (index.html) ── */
-    'pld.demo.title': 'Watch it run',
-    'pld.demo.body':
-      'The recording below follows the real flow in 46 seconds: session history, AI search, one-click resume, per-agent usage, and a Feishu approval on a phone.',
+    /* ── features.html ── */
+    'pf.doc.title': 'Features — Agent Session Center',
+    'pf.doc.description':
+      'What Agent Session Center does, in detail: one session list across eight coding agents, plain-language search, one-click resume, per-agent token and cost tracking, and Feishu approvals on your phone — with screenshots, and the boundaries it does not cross.',
+    'pf.h1': 'What it does, in detail',
+    'pf.lede':
+      'This is the detail behind the landing page: the problem it removes, the five things it does with real screenshots, and the line it does not cross.',
+
+    /* ── landing hero video controls (index.html) ── */
     'pld.demo.play': 'Play full screen',
     'pld.demo.simulator': 'Open the interactive demo',
     'pld.demo.note': 'The recording is the real application.'
@@ -379,10 +384,14 @@
     'pc.foot.note':
       '这是桌面应用的版本说明，中英双语。本页的更新数据随站点一起构建。',
 
-    /* ── 落地页演示区块（index.html） ── */
-    'pld.demo.title': '看它跑起来',
-    'pld.demo.body':
-      '下面这段录屏用 46 秒走了一遍真实操作：会话历史、AI 查找、一键恢复、按 agent 的用量，以及手机上的一次飞书审批。',
+    /* ── features.html ── */
+    'pf.doc.title': 'Agent Session Center —— 功能',
+    'pf.doc.description':
+      'Agent Session Center 具体能做什么：8 个 coding agent 的会话汇成一个列表、用人话搜索、一键恢复、按 agent 统计 token 与费用，以及把审批推到手机的飞书通道 —— 配真实截图，也写明它不越过的边界。',
+    'pf.h1': '它具体能做什么',
+    'pf.lede': '这是落地页背后的细节：它解决的问题、它做的五件事（配真实截图），以及它不越过的边界。',
+
+    /* ── 落地页 hero 视频控件（index.html） ── */
     'pld.demo.play': '全屏播放',
     'pld.demo.simulator': '打开交互式演示',
     'pld.demo.note': '录屏是真实应用。'

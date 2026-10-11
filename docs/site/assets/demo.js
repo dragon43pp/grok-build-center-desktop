@@ -1,4 +1,4 @@
-/* Fullscreen wiring for the landing page's demo video.
+/* Fullscreen wiring for the landing page's hero video.
  *
  * The site is served with CSP script-src 'self', so there is no inline handler here
  * and no inline script on the page. The button requests fullscreen on the <video>
@@ -31,7 +31,7 @@
 
   function wire() {
     var button = document.querySelector('.lp-demo-full')
-    var video = document.querySelector('.lp-demo-shot video')
+    var video = document.querySelector('.lp-hero-shot video')
     if (!button || !video) return
 
     button.addEventListener('click', function () {

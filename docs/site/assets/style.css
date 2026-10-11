@@ -891,6 +891,12 @@ body.lp .foot {
 
   .lp-flip .lp-block-text { order: 2; }
   .lp-flip .lp-block-shot { order: 1; }
+
+  body.lp-features .lp-block {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 48px;
+    padding: 56px 0;
+  }
 }
 
 .lp-tag {
@@ -939,6 +945,24 @@ body.lp .foot {
 .lp-download .section-lede { margin-left: auto; margin-right: auto; }
 
 .lp-download-cta { justify-content: center; }
+
+/* docs */
+
+/* The landing page closes with a plain left-aligned link row. Centring it too would put
+   the download block and the docs block in the same shape twice in a row. */
+.lp-docs { padding: 56px 0 0; }
+.lp-docs .section-lede { margin-bottom: 20px; }
+.lp-docs-cta { margin: 0; }
+
+/* features page */
+
+/* features.html carries the long-form text the landing page no longer does, so the prose
+   and the screenshots are both a size up. */
+body.lp-features .lp-features-hero { padding: 64px 0 8px; }
+body.lp-features .lp-features-hero .lede { font-size: 16px; max-width: 78ch; }
+body.lp-features .lp-block h3 { font-size: clamp(21px, 2.8vw, 26px); }
+body.lp-features .lp-body { font-size: 15.5px; line-height: 1.7; }
+body.lp-features .lp-card p { font-size: 14.5px; }
 
 body.lp .foot {
   display: grid;
@@ -995,8 +1019,8 @@ html[data-theme="light"] .lp-block-shot { background: var(--plate); }
 }
 
 /* ─────────────── landing chrome: bar and hero ───────────────
-   Brand at the left edge, six text links beside it, controls at the right edge with the
-   repository last. The hero is two columns — recording left, offer right — and stacks
+   Brand at the left edge, five text links beside it, controls at the right edge with the
+   repository last. The hero is two columns — text left, recording right — and stacks
    below 980px with the prose first so the h1 is never behind a video. */
 
 .topbar-left {
@@ -1054,17 +1078,21 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 
 @media (min-width: 980px) {
   .lp-hero {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: 52px;
     padding: 72px 0 40px;
   }
+}
 
-  .lp-hero-text { order: 2; }
-  .lp-hero-shot { order: 1; }
+.lp-hero-icon {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 0 22px;
 }
 
 .lp-hero h1 {
-  font-size: clamp(28px, 3.2vw, 40px);
+  font-size: clamp(30px, 3.6vw, 44px);
   letter-spacing: -1.2px;
   margin: 0 0 16px;
 }
@@ -1082,6 +1110,9 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 }
 
 .lp-hero-shot video { display: block; width: 100%; height: auto; }
+
+.lp-hero-media { display: grid; gap: 12px; }
+.lp-hero-media-cta { margin: 0; }
 
 .lp-platform { margin: 18px 0 0; }
 
