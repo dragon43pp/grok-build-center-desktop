@@ -56,7 +56,20 @@ try {
 
   $digest = (Get-FileSha256 $installerPath).ToLowerInvariant()
   $checksumPath = "$installerPath.sha256"
-  "$digest  $installerName" | Set-Content -LiteralPath $checksumPath -Encoding ascii
+  # Windows PowerShell 5.1's default Set-Content appends CRLF, which makes
+  # `sha256sum -c` fail on Linux/macOS/WSL with a misleading
+  # "'<installer>'$'\r': No such file or directory" error even though the digest
+  # itself is correct. Write the sidecar verbatim with a single LF terminator:
+  # `-NoNewline` stops the implicit CRLF, the backtick-n is a bare LF, and
+  # `-Encoding ascii` keeps the file BOM-free.
+  Set-Content -LiteralPath $checksumPath -Value "$digest  $installerName`n" -Encoding ascii -NoNewline
+
+  # Regression guard: read the raw bytes back and reject any CR. Get-Content would
+  # normalize line endings and always pass, so it must not be used here.
+  $checksumBytes = [System.IO.File]::ReadAllBytes($checksumPath)
+  if ($checksumBytes -contains 0x0D) {
+    throw "Checksum sidecar $checksumPath contains a carriage return (0x0D); it must use LF endings only. A CR breaks 'sha256sum -c' on Linux/macOS/WSL, where the CR is parsed as part of the file name."
+  }
 
   [pscustomobject]@{
     Tag = $TagName
