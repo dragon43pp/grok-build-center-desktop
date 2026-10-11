@@ -44,7 +44,7 @@
     "appId": "com.agentsessioncenter.app",
     "productName": "Agent Session Center",
     "artifactName": "AgentSessionCenter-Setup-${version}.${ext}",
-    "afterPack": "scripts/assert-packaged-resources.cjs",
+    "afterPack": "scripts/after-pack.cjs",
     "electronLanguages": [
       "en-US",
       "zh-CN",

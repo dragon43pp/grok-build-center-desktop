@@ -14,6 +14,47 @@ function packagedResourcesDir(context) {
   return join(context.appOutDir, appBundle, 'Contents', 'Resources')
 }
 
+// Mirrors the resolution above, but points at the directory holding the
+// executable instead of `resources`. The pruner in prune-electron-runtime.cjs
+// works on the same directory.
+function packagedRuntimeDir(context) {
+  if (context.electronPlatformName !== 'darwin') {
+    return context.appOutDir
+  }
+  const appBundle = readdirSync(context.appOutDir).find((name) =>
+    name.endsWith('.app')
+  )
+  if (!appBundle) throw new Error('Packaged macOS app bundle was not found')
+  return join(context.appOutDir, appBundle, 'Contents', 'MacOS')
+}
+
+// scripts/prune-electron-runtime.cjs removes these five from the packaged
+// runtime. None of them is ever loaded by the Windows build, but if one comes
+// back (for example because the pruner stops running) the installer silently
+// grows again, so this list is the gate that keeps them out. Keep it in sync
+// with that script.
+const PRUNED_RUNTIME_FILES = [
+  'dxcompiler.dll',
+  'dxil.dll',
+  'd3dcompiler_47.dll',
+  'debug.log',
+  'chrome_200_percent.pak'
+]
+
+function assertRuntimePruned(context) {
+  const runtimeDir = packagedRuntimeDir(context)
+  const present = PRUNED_RUNTIME_FILES.filter((filename) =>
+    existsSync(join(runtimeDir, filename))
+  )
+  if (present.length > 0) {
+    throw new Error(
+      `Packaged runtime still contains files that must be pruned: ${present.join(
+        ', '
+      )}`
+    )
+  }
+}
+
 function assertNoBundledDshRuntime(context) {
   const runtimeRoot = join(packagedResourcesDir(context), 'dsh-runtime')
   if (existsSync(runtimeRoot)) {
@@ -94,6 +135,7 @@ function assertNoDevelopmentTrees(context) {
 
 exports.default = async function assertPackagedResources(context) {
   await assertPackagedTrayAssets.default(context)
+  assertRuntimePruned(context)
   assertNoBundledDshRuntime(context)
   assertNoDevelopmentTrees(context)
 }
