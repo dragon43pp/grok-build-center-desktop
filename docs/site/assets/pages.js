@@ -173,7 +173,7 @@
       'Disk image for x64 Macs. As above: unsigned, and Gatekeeper blocks the first launch until you allow it.',
     'pdl.verify.title': 'Verify the download',
     'pdl.verify.body':
-      'Every file below has a sidecar published beside it, served from this site. After downloading, check the hash. On Windows: <span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>. On Linux, with the sidecar in the same directory: <span class="mono">sha256sum -c &lt;file&gt;.sha256</span>. On macOS: <span class="mono">shasum -a 256 &lt;file&gt;</span>. Replace &lt;file&gt; with the name shown on the card. A matching hash proves the download is intact and is the file that was published; it does not prove who built it.',
+      'Every file below has a sidecar published beside it, served from this site. After downloading, check the hash. On Windows: <span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>. On Linux, for the .deb or AppImage, with the sidecar in the same directory: <span class="mono">sha256sum -c &lt;file&gt;.sha256</span>. On macOS: <span class="mono">shasum -a 256 &lt;file&gt;</span>. Replace &lt;file&gt; with the name shown on the card. A matching hash proves the download is intact and is the file that was published; it does not prove who built it.',
     'pdl.unsigned.title': 'About the unsigned warning',
     'pdl.unsigned.body':
       'No release is code-signed on any platform, so the operating system will interrupt the first launch. On Windows, SmartScreen shows a prompt: choose More info, then Run anyway. On macOS, Gatekeeper blocks the app: on macOS 15 and later, open System Settings, Privacy &amp; Security, and choose Open Anyway after a blocked attempt; on macOS 10.14 through 14, right-click the app and choose Open. Linux packages need no signature. None of this is an oversight — signing is planned but not applied for, and the SHA-256 sidecar is what makes a download checkable in the meantime.',
@@ -371,7 +371,7 @@
       '给 x64 Mac 的磁盘映像。同上：未签名，首次启动会被 Gatekeeper 拦下，需手动放行。',
     'pdl.verify.title': '校验下载',
     'pdl.verify.body':
-      '下面每个文件都配了一份同样命名的 .sha256 校验文件，由本站提供。下载完成后核对哈希。Windows：<span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>。Linux，把校验文件放在同一目录：<span class="mono">sha256sum -c &lt;file&gt;.sha256</span>。macOS：<span class="mono">shasum -a 256 &lt;file&gt;</span>。把 &lt;file&gt; 换成卡片上显示的文件名。哈希对得上只能证明下载完整、且就是被发布的那个文件；它证明不了是谁构建的。',
+      '下面每个文件都配了一份同样命名的 .sha256 校验文件，由本站提供。下载完成后核对哈希。Windows：<span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>。Linux 上，对 .deb 或 AppImage，把校验文件放在同一目录：<span class="mono">sha256sum -c &lt;file&gt;.sha256</span>。macOS：<span class="mono">shasum -a 256 &lt;file&gt;</span>。把 &lt;file&gt; 换成卡片上显示的文件名。哈希对得上只能证明下载完整、且就是被发布的那个文件；它证明不了是谁构建的。',
     'pdl.unsigned.title': '关于未签名提示',
     'pdl.unsigned.body':
       '没有任何平台带代码签名，所以系统会在首次启动时拦一下。Windows 上 SmartScreen 会弹提示：选「更多信息」，再选「仍要运行」。macOS 上 Gatekeeper 会拦下应用：macOS 15 及之后，被拦一次后进「系统设置 → 隐私与安全性」点「仍要打开」；macOS 10.14 到 14 上，右键点应用选「打开」。Linux 包本来就不需要签名。这些都不是疏忽 —— 签名有计划但尚未申请，在此之前，让下载可核对的东西是那份 SHA-256。',

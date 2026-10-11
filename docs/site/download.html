@@ -95,7 +95,7 @@
 
   <section class="blocks dl-block">
     <h2 data-i18n="pdl.verify.title">Verify the download</h2>
-    <p data-i18n="pdl.verify.body">Every file below has a sidecar published beside it, served from this site. After downloading, check the hash. On Windows: <span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>. On Linux, with the sidecar in the same directory: <span class="mono">sha256sum -c &lt;file&gt;.sha256</span>. On macOS: <span class="mono">shasum -a 256 &lt;file&gt;</span>. Replace &lt;file&gt; with the name shown on the card. A matching hash proves the download is intact and is the file that was published; it does not prove who built it.</p>
+    <p data-i18n="pdl.verify.body">Every file below has a sidecar published beside it, served from this site. After downloading, check the hash. On Windows: <span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>. On Linux, for the .deb or AppImage, with the sidecar in the same directory: <span class="mono">sha256sum -c &lt;file&gt;.sha256</span>. On macOS: <span class="mono">shasum -a 256 &lt;file&gt;</span>. Replace &lt;file&gt; with the name shown on the card. A matching hash proves the download is intact and is the file that was published; it does not prove who built it.</p>
   </section>
 
   <section class="blocks dl-block">
