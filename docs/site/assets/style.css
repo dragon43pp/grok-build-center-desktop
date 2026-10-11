@@ -884,9 +884,18 @@ body.lp .foot {
 .lp-block:first-of-type { border-top: 0; margin-top: 8px; }
 
 @media (min-width: 900px) {
+  /* The screenshot always takes the wider track, whichever side it lands on. */
   .lp-block {
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: 40px;
+  }
+
+  /* A flipped block mirrors the tracks; it does not only swap the two items. The tracks
+     belong to the row, so swapping the items and leaving the tracks alone drops the
+     screenshot into the first, narrower column — the same screenshot would then render
+     at two different sizes depending on which row it sits in. */
+  .lp-flip {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   }
 
   .lp-flip .lp-block-text { order: 2; }
@@ -896,6 +905,10 @@ body.lp .foot {
     grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
     gap: 48px;
     padding: 56px 0;
+  }
+
+  body.lp-features .lp-flip {
+    grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
   }
 }
 
