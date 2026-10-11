@@ -15,13 +15,12 @@
 <header class="topbar">
   <div class="topbar-left">
     <a class="brand" href="./index.html">
-      <img src="./assets/mark.svg" alt="" width="26" height="26">
+      <img src="./assets/icon/app-icon-64.png" srcset="./assets/icon/app-icon-64.png 1x, ./assets/icon/app-icon-128.png 2x" alt="" width="26" height="26">
       <span class="brand-name">Agent Session Center</span>
     </a>
     <nav class="lp-nav" aria-label="Sections">
       <a href="./index.html" data-i18n="l.nav.home">Home</a>
-      <a href="#features" data-i18n="l.nav.features">Features</a>
-      <a href="#demo" data-i18n="l.nav.demo">Demo</a>
+      <a href="./features.html" data-i18n="l.nav.features">Features</a>
       <a href="./docs.html" data-i18n="l.nav.docs">Docs</a>
       <a href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
       <a href="./download.html" data-i18n="l.nav.download">Download</a>
@@ -44,150 +43,36 @@
 
 <main id="top">
 
-  <!-- ─────────────────────────── hero ─────────────────────────── -->
+  <!-- ─────────────────────────── hero: video ─────────────────────────── -->
 
   <section class="lp-hero">
     <div class="lp-hero-text">
+      <img class="lp-hero-icon" src="./assets/icon/app-icon-256.png" width="96" height="96" alt="">
       <h1 data-i18n="l.hero.title">Eight coding agents. One place where every session is findable.</h1>
       <p class="lede" data-i18n="l.hero.lede">
         Every CLI writes its sessions somewhere else. Agent Session Center puts them in one
         desktop app: browse and search history, resume with one click, see tokens and cost —
         and when an agent stalls on a permission prompt, Feishu pushes it to your phone.
       </p>
-      <p class="cta-row">
+      <p class="cta-row lp-hero-cta">
         <a class="btn btn-primary" href="./download.html" data-i18n="l.hero.cta.download">Download v1.0.4</a>
         <a class="btn" href="./docs.html" data-i18n="l.hero.cta.docs">Read the docs</a>
       </p>
-      <p class="hero-note" data-i18n="l.hero.note">
-        The downloads are unsigned; the release page publishes SHA-256 for every asset.
-        Your terminals stay exactly as they are — ASC reads event streams, not your screen.
-      </p>
       <p class="kicker lp-platform" data-i18n="l.hero.kicker">Open source · Apache-2.0 · Windows / Linux / macOS</p>
     </div>
-    <figure class="lp-hero-shot">
-      <!-- The real interface, recorded. 46 seconds, no sound, looping: the actual
-           product flow (history → search → resume → usage → Feishu), not a mock. -->
-      <video autoplay muted loop playsinline preload="metadata" poster="./assets/shots/01-home.png">
-        <source src="./assets/demo.mp4" type="video/mp4">
-      </video>
-    </figure>
-  </section>
-
-  <!-- ─────────────────────────── pain points ─────────────────────────── -->
-
-  <section class="blocks" aria-labelledby="pain-heading">
-    <h2 id="pain-heading" data-i18n="l.pain.title">Does this sound familiar?</h2>
-    <div class="lp-cards">
-      <article class="lp-card">
-        <h3 data-i18n="l.pain1.title">Which folder was that session in?</h3>
-        <p data-i18n="l.pain1.body">You run several agents a day across many project folders. When something breaks two days later, finding the right session means guessing the CLI, the project and the date — all three.</p>
-      </article>
-      <article class="lp-card">
-        <h3 data-i18n="l.pain2.title">Where did I leave off?</h3>
-        <p data-i18n="l.pain2.body">Long sessions outlive your memory of them. Opening a CLI only shows the newest transcript of whichever folder you happened to open.</p>
-      </article>
-      <article class="lp-card">
-        <h3 data-i18n="l.pain3.title">You walk away, the agent stalls.</h3>
-        <p data-i18n="l.pain3.body">An agent stopped on a permission prompt waits forever, silently. Away from the desk, there is nothing you can do about it.</p>
-      </article>
-    </div>
-  </section>
-
-  <!-- ─────────────────────────── features ─────────────────────────── -->
-
-  <section class="blocks" id="features" aria-labelledby="feat-heading">
-    <h2 id="feat-heading" data-i18n="l.feat.title">What it does</h2>
-
-    <article class="lp-block">
-      <div class="lp-block-text">
-        <p class="lp-tag" data-i18n="l.f1.tag">Session history</p>
-        <h3 data-i18n="l.f1.title">Every session, from every agent, in one list</h3>
-        <p class="lp-body" data-i18n="l.f1.body">Claude Code, Codex CLI, OpenCode, Grok Build, Kimi Code, Pi, Antigravity and WorkBuddy appear in one view — with workspace path, duration and status. Workspaces are scanned read-only; nothing is modified.</p>
-      </div>
-      <figure class="lp-block-shot">
-        <img loading="lazy" src="./assets/shots/02-session-history.png" width="1440" height="900" alt="">
+    <div class="lp-hero-media">
+      <figure class="lp-hero-shot">
+        <!-- The real interface, recorded. 46 seconds, no sound, looping: the actual
+             product flow (history → search → resume → usage → Feishu), not a mock. -->
+        <video autoplay muted loop playsinline controls preload="metadata" poster="./assets/shots/01-home.png">
+          <source src="./assets/demo.mp4" type="video/mp4">
+        </video>
       </figure>
-    </article>
-
-    <article class="lp-block lp-flip">
-      <div class="lp-block-text">
-        <p class="lp-tag" data-i18n="l.f2.tag">AI search</p>
-        <h3 data-i18n="l.f2.title">Ask in plain language, get the session back</h3>
-        <p class="lp-body" data-i18n="l.f2.body">Say what you remember — the task, the file, roughly when — and search narrows across every agent at once. You do not have to remember which CLI you used.</p>
-      </div>
-      <figure class="lp-block-shot">
-        <img loading="lazy" src="./assets/shots/03-ai-search.png" width="1440" height="900" alt="">
-      </figure>
-    </article>
-
-    <article class="lp-block">
-      <div class="lp-block-text">
-        <p class="lp-tag" data-i18n="l.f3.tag">Resume</p>
-        <h3 data-i18n="l.f3.title">One click back into the conversation</h3>
-        <p class="lp-body" data-i18n="l.f3.body">Resume is offered where it has been verified: Claude Code, Codex CLI and Grok Build. Everywhere else the resume button is greyed out and the button itself carries the reason, because an unverified capability is never dressed up as a working one.</p>
-      </div>
-      <figure class="lp-block-shot">
-        <img loading="lazy" src="./assets/shots/04-resume.png" width="1440" height="900" alt="">
-      </figure>
-    </article>
-
-    <article class="lp-block lp-flip">
-      <div class="lp-block-text">
-        <p class="lp-tag" data-i18n="l.f4.tag">Usage</p>
-        <h3 data-i18n="l.f4.title">Tokens and cost, per agent, per day</h3>
-        <p class="lp-body" data-i18n="l.f4.body">See which agent burned what, and when. The numbers are read from local session files; nothing is sent anywhere.</p>
-      </div>
-      <figure class="lp-block-shot">
-        <img loading="lazy" src="./assets/shots/05-usage.png" width="1440" height="900" alt="">
-      </figure>
-    </article>
-
-    <article class="lp-block">
-      <div class="lp-block-text">
-        <p class="lp-tag" data-i18n="l.f5.tag">Feishu</p>
-        <h3 data-i18n="l.f5.title">Approvals on your phone, from anywhere</h3>
-        <p class="lp-body" data-i18n="l.f5.body">When an agent stops on a permission prompt, Feishu pushes a card carrying the actual question. Approve or deny from your phone — at lunch, on the sofa, away from the desk.</p>
-      </div>
-      <figure class="lp-block-shot">
-        <img loading="lazy" src="./assets/shots/06-feishu.png" width="1440" height="900" alt="">
-      </figure>
-    </article>
-  </section>
-
-  <!-- ─────────────────────────── demo ─────────────────────────── -->
-
-  <section class="blocks lp-demo" id="demo" aria-labelledby="demo-heading">
-    <h2 id="demo-heading" data-i18n="pld.demo.title">Watch it run</h2>
-    <p class="section-lede" data-i18n="pld.demo.body">The recording below follows the real flow in 46 seconds: session history, AI search, one-click resume, per-agent usage, and a Feishu approval on a phone.</p>
-    <figure class="lp-demo-shot">
-      <video autoplay muted loop playsinline controls preload="metadata" poster="./assets/shots/01-home.png">
-        <source src="./assets/demo.mp4" type="video/mp4">
-      </video>
-    </figure>
-    <p class="cta-row lp-demo-cta">
-      <button type="button" class="btn lp-demo-full" data-i18n="pld.demo.play">Play full screen</button>
-      <a class="btn" href="./simulator.html" data-i18n="pld.demo.simulator">Open the interactive demo</a>
-    </p>
-    <p class="hero-note" data-i18n="pld.demo.note">The recording is the real application.</p>
-  </section>
-
-  <!-- ─────────────────────────── honest boundaries ─────────────────────────── -->
-
-  <section class="blocks" aria-labelledby="truth-heading">
-    <h2 id="truth-heading" data-i18n="l.truth.title">Where it draws the line</h2>
-    <div class="lp-cards">
-      <article class="lp-card">
-        <h3 data-i18n="l.truth1.title">It never reads your terminal</h3>
-        <p data-i18n="l.truth1.body">Status comes from structured events — hooks, SSE, RPC, transcripts — never from parsing the TUI. The CLI keeps its own interface; ASC adds the layer around it.</p>
-      </article>
-      <article class="lp-card">
-        <h3 data-i18n="l.truth2.title">It reports capability honestly</h3>
-        <p data-i18n="l.truth2.body">Each agent can report a different depth. ASC declares, in source, what each one can and cannot see, and marks low confidence instead of guessing.</p>
-      </article>
-      <article class="lp-card">
-        <h3 data-i18n="l.truth3.title">Unsigned, hashed, inspectable</h3>
-        <p data-i18n="l.truth3.body">The builds are unsigned; every release publishes SHA-256 so you can verify what you run. The whole product is Apache-2.0 on GitHub.</p>
-      </article>
+      <p class="cta-row lp-hero-media-cta">
+        <button type="button" class="btn lp-demo-full" data-i18n="pld.demo.play">Play full screen</button>
+        <a class="btn" href="./simulator.html" data-i18n="pld.demo.simulator">Open the interactive demo</a>
+      </p>
+      <p class="hero-note" data-i18n="pld.demo.note">The recording is the real application.</p>
     </div>
   </section>
 
@@ -199,6 +84,18 @@
     <p class="cta-row lp-download-cta">
       <a class="btn btn-primary" href="./download.html" data-i18n="l.dl.cta">Get the latest release</a>
       <a class="btn" href="./docs.html#s9" data-i18n="l.dl.src">Read the source</a>
+    </p>
+  </section>
+
+  <!-- ─────────────────────────── docs ─────────────────────────── -->
+
+  <section class="blocks lp-docs" id="docs" aria-labelledby="docs-heading">
+    <h2 id="docs-heading" data-i18n="l.docs.title">Documentation</h2>
+    <p class="section-lede" data-i18n="l.docs.lede">What it does and which agents it supports, install steps for Windows, Linux and macOS, and what to do when something goes wrong. The changelog records what changed in every release.</p>
+    <p class="cta-row lp-docs-cta">
+      <a class="btn btn-primary" href="./docs.html" data-i18n="l.hero.cta.docs">Read the docs</a>
+      <a class="btn" href="./changelog.html" data-i18n="l.nav.changelog">Changelog</a>
+      <a class="btn" href="./simulator.html" data-i18n="pld.demo.simulator">Open the interactive demo</a>
     </p>
   </section>
 

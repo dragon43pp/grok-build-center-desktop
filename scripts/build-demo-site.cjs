@@ -40,7 +40,7 @@ const vm = require('node:vm')
 
 const ROOT = path.resolve(__dirname, '..')
 const SOURCE = path.join(ROOT, 'docs', 'site')
-const PAGES = ['index.html', 'simulator.html', 'docs.html', 'changelog.html', 'download.html']
+const PAGES = ['index.html', 'features.html', 'simulator.html', 'docs.html', 'changelog.html', 'download.html']
 const LOCALES = [
   { dir: 'en', lang: 'en', attr: 'en' },
   { dir: 'zh', lang: 'zh', attr: 'zh-CN' }
