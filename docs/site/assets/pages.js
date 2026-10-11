@@ -151,7 +151,7 @@
     /* ── download.html ── */
     'pdl.doc.title': 'Download — Agent Session Center',
     'pdl.doc.description':
-      'Download Agent Session Center 1.0.4 for Windows, Linux and macOS. Each file with its size and SHA-256, and how to verify it before you run it.',
+      'Download Agent Session Center 1.0.4 for Windows and macOS. Each file with its size and SHA-256, and how to verify it before you run it.',
     'pdl.h1': 'Download',
     'pdl.lede':
       'Every build is self-contained and unsigned. Pick the file for your system, check its hash against the sidecar served next to it, and run it. If you are unsure which one you need, the notes under each file say exactly what it is.',
@@ -159,24 +159,15 @@
     'pdl.os1.label': 'Windows 10 / 11 — x64',
     'pdl.os1.note':
       'Guided NSIS installer. Installs per-user by default; choose Install for all users on its first page to use Program Files instead. Unsigned, so SmartScreen prompts once.',
-    'pdl.os2.label': 'Ubuntu / Debian — x64',
+    'pdl.os2.label': 'macOS — Apple silicon',
     'pdl.os2.note':
-      'The .deb package installs with apt and adds ASC to your application menu.',
-    'pdl.os3.label': 'Linux — x64',
-    'pdl.os3.note':
-      'Portable AppImage. Make it executable with chmod +x and run it; nothing is installed.',
-    'pdl.os4.label': 'macOS — Apple silicon',
-    'pdl.os4.note':
       'Disk image for arm64 Macs. Unsigned and not notarized, so Gatekeeper blocks the first launch until you allow it.',
-    'pdl.os5.label': 'macOS — Intel',
-    'pdl.os5.note':
-      'Disk image for x64 Macs. As above: unsigned, and Gatekeeper blocks the first launch until you allow it.',
     'pdl.verify.title': 'Verify the download',
     'pdl.verify.body':
-      'Every file below has a sidecar published beside it, served from this site. After downloading, check the hash. On Windows: <span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>. On Linux, for the .deb or AppImage, with the sidecar in the same directory: <span class="mono">sha256sum -c &lt;file&gt;.sha256</span>. On macOS: <span class="mono">shasum -a 256 &lt;file&gt;</span>. Replace &lt;file&gt; with the name shown on the card. A matching hash proves the download is intact and is the file that was published; it does not prove who built it.',
+      'Every file below has a sidecar published beside it, served from this site. After downloading, check the hash. On Windows: <span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>. On macOS: <span class="mono">shasum -a 256 &lt;file&gt;</span>. Replace &lt;file&gt; with the name shown on the card. A matching hash proves the download is intact and is the file that was published; it does not prove who built it.',
     'pdl.unsigned.title': 'About the unsigned warning',
     'pdl.unsigned.body':
-      'No release is code-signed on any platform, so the operating system will interrupt the first launch. On Windows, SmartScreen shows a prompt: choose More info, then Run anyway. On macOS, Gatekeeper blocks the app: on macOS 15 and later, open System Settings, Privacy &amp; Security, and choose Open Anyway after a blocked attempt; on macOS 10.14 through 14, right-click the app and choose Open. Linux packages need no signature. None of this is an oversight — signing is planned but not applied for, and the SHA-256 sidecar is what makes a download checkable in the meantime.',
+      'No release is code-signed on any platform, so the operating system will interrupt the first launch. On Windows, SmartScreen shows a prompt: choose More info, then Run anyway. On macOS, Gatekeeper blocks the app: on macOS 15 and later, open System Settings, Privacy &amp; Security, and choose Open Anyway after a blocked attempt; on macOS 10.14 through 14, right-click the app and choose Open. None of this is an oversight — signing is planned but not applied for, and the SHA-256 sidecar is what makes a download checkable in the meantime.',
     'pdl.autoupdate':
       'The app checks the GitHub Releases of the project at startup and announces a new version in-app; it never installs silently. This page serves the installers themselves. <span class="mono">ASC_DISABLE_UPDATES=1</span> skips that check entirely.',
     'pdl.steps.title': 'After you download',
@@ -184,8 +175,6 @@
       'Run the installer and, if SmartScreen prompts, choose More info and then Run anyway. Launch ASC from the Start menu (type asc) and let the first CLI scan finish. Pick an agent and start a session.',
     'pdl.steps.mac':
       'Open the disk image and drag ASC to Applications. On first launch allow it through Gatekeeper (Open Anyway on macOS 15 and later, or right-click and Open on older versions), then let the scan finish and start a session.',
-    'pdl.steps.linux':
-      'For the AppImage, make it executable with chmod +x and run it; for the .deb, install it with apt. Launch ASC, let the first scan finish, then start a session.',
     'pdl.note':
       'The documentation, the changelog and the downloads all live here; the GitHub icons in the header and footer link to the repository.',
 
@@ -349,7 +338,7 @@
     /* ── download.html ── */
     'pdl.doc.title': 'Agent Session Center —— 下载',
     'pdl.doc.description':
-      '下载 Agent Session Center 1.0.4，支持 Windows、Linux 和 macOS。每个文件都带大小和 SHA-256，以及运行前的校验方法。',
+      '下载 Agent Session Center 1.0.4，支持 Windows 和 macOS。每个文件都带大小和 SHA-256，以及运行前的校验方法。',
     'pdl.h1': '下载',
     'pdl.lede':
       '每个构建都自包含、且未签名。按你的系统挑一个文件，先用旁边那份 .sha256 校验文件核对哈希，再运行。不确定该下哪个，就看每个文件下面的说明。',
@@ -357,24 +346,15 @@
     'pdl.os1.label': 'Windows 10 / 11 —— x64',
     'pdl.os1.note':
       '引导式 NSIS 安装包。默认按用户安装；想在 Program Files 里装，就在向导第一页选「为所有用户安装」。未签名，SmartScreen 会提示一次。',
-    'pdl.os2.label': 'Ubuntu / Debian —— x64',
+    'pdl.os2.label': 'macOS —— Apple 芯片',
     'pdl.os2.note':
-      '.deb 包用 apt 安装，并会把 ASC 加进应用菜单。',
-    'pdl.os3.label': 'Linux —— x64',
-    'pdl.os3.note':
-      '免安装 AppImage。用 chmod +x 让它可执行后直接运行，不写入系统。',
-    'pdl.os4.label': 'macOS —— Apple 芯片',
-    'pdl.os4.note':
       '给 arm64 Mac 的磁盘映像。未签名也未公证，首次启动会被 Gatekeeper 拦下，需手动放行。',
-    'pdl.os5.label': 'macOS —— Intel',
-    'pdl.os5.note':
-      '给 x64 Mac 的磁盘映像。同上：未签名，首次启动会被 Gatekeeper 拦下，需手动放行。',
     'pdl.verify.title': '校验下载',
     'pdl.verify.body':
-      '下面每个文件都配了一份同样命名的 .sha256 校验文件，由本站提供。下载完成后核对哈希。Windows：<span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>。Linux 上，对 .deb 或 AppImage，把校验文件放在同一目录：<span class="mono">sha256sum -c &lt;file&gt;.sha256</span>。macOS：<span class="mono">shasum -a 256 &lt;file&gt;</span>。把 &lt;file&gt; 换成卡片上显示的文件名。哈希对得上只能证明下载完整、且就是被发布的那个文件；它证明不了是谁构建的。',
+      '下面每个文件都配了一份同样命名的 .sha256 校验文件，由本站提供。下载完成后核对哈希。Windows：<span class="mono">certutil -hashfile &lt;file&gt; SHA256</span>。macOS：<span class="mono">shasum -a 256 &lt;file&gt;</span>。把 &lt;file&gt; 换成卡片上显示的文件名。哈希对得上只能证明下载完整、且就是被发布的那个文件；它证明不了是谁构建的。',
     'pdl.unsigned.title': '关于未签名提示',
     'pdl.unsigned.body':
-      '没有任何平台带代码签名，所以系统会在首次启动时拦一下。Windows 上 SmartScreen 会弹提示：选「更多信息」，再选「仍要运行」。macOS 上 Gatekeeper 会拦下应用：macOS 15 及之后，被拦一次后进「系统设置 → 隐私与安全性」点「仍要打开」；macOS 10.14 到 14 上，右键点应用选「打开」。Linux 包本来就不需要签名。这些都不是疏忽 —— 签名有计划但尚未申请，在此之前，让下载可核对的东西是那份 SHA-256。',
+      '没有任何平台带代码签名，所以系统会在首次启动时拦一下。Windows 上 SmartScreen 会弹提示：选「更多信息」，再选「仍要运行」。macOS 上 Gatekeeper 会拦下应用：macOS 15 及之后，被拦一次后进「系统设置 → 隐私与安全性」点「仍要打开」；macOS 10.14 到 14 上，右键点应用选「打开」。这些都不是疏忽 —— 签名有计划但尚未申请，在此之前，让下载可核对的东西是那份 SHA-256。',
     'pdl.autoupdate':
       '应用在启动时检查项目的 GitHub Releases，并在应用内提示新版本；它绝不静默安装。本站提供的是安装包本身。设 <span class="mono">ASC_DISABLE_UPDATES=1</span> 可以完全跳过这次检查。',
     'pdl.steps.title': '下载之后',
@@ -382,8 +362,6 @@
       '运行安装包；SmartScreen 提示时选「更多信息」再选「仍要运行」。从开始菜单启动 ASC（敲 asc 就能搜到），等第一次 CLI 扫描跑完。选一个 agent，创建会话。',
     'pdl.steps.mac':
       '打开磁盘映像，把 ASC 拖进 Applications。首次启动时过一遍 Gatekeeper（macOS 15 及以上点「仍要打开」，更早的版本右键选「打开」），然后等扫描结束，开始一场会话。',
-    'pdl.steps.linux':
-      'AppImage 的话，先让它可执行再运行；.deb 的话用 apt 安装。启动 ASC，等第一次扫描结束，然后开始一场会话。',
     'pdl.note':
       '文档、更新日志和下载都在本站内；页头与页脚的 GitHub 图标指向仓库。',
 
