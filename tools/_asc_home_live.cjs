@@ -136,6 +136,23 @@ function box(rect) {
       hero.icon ? Math.round(hero.icon.box.width) + 'x' + Math.round(hero.icon.box.height) : 'missing')
     console.log('      home type: h1=' + hero.h1Size + ' wrap=' + hero.balance + ' page height=' + hero.pageHeight)
     check('the hero headline balances its lines', /balance/.test(hero.balance), hero.balance)
+
+    /* The platform line is tracked-out uppercase, the longest line in the column. Measure
+       the line boxes rather than the declaration: balance is the intent, but an orphaned
+       word on the second line is the thing that actually looks unfinished. */
+    const kicker = await page.evaluate(() => {
+      const el = document.querySelector('.lp-platform')
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      const widths = Array.from(range.getClientRects()).filter(r => r.width > 0).map(r => Math.round(r.width))
+      const style = getComputedStyle(el)
+      return { wrap: style.textWrap || style.textWrapStyle || '', widths: widths }
+    })
+    console.log('      platform line: ' + JSON.stringify(kicker.widths) + ' wrap=' + kicker.wrap)
+    check('the platform line balances where it wraps', /balance/.test(kicker.wrap), kicker.wrap)
+    check('the platform line leaves no orphaned word',
+      kicker.widths.length < 2 || Math.min.apply(null, kicker.widths) / Math.max.apply(null, kicker.widths) > 0.25,
+      JSON.stringify(kicker.widths))
     /* One screen, not a scroll: the guard against the page growing sections back. */
     check('the landing page still fits on about one screen', hero.pageHeight < 1200, String(hero.pageHeight))
 
