@@ -1149,7 +1149,13 @@ html[data-theme="light"] .theme-btn .icon-moon { display: block; }
 
 .lp-hero-media { display: grid; gap: 12px; }
 
-.lp-platform { margin: 18px 0 0; }
+/* The platform line is uppercase with wide tracking, so in a narrow column it wraps —
+   and an English wrap left one word alone on the second line. Balancing costs nothing
+   here: a line that already fits stays one line. */
+.lp-platform {
+  margin: 18px 0 0;
+  text-wrap: balance;
+}
 
 /* Two Han characters must never break across lines: the bar grows 10px taller and the
    whole header shifts when they do. The group is not allowed to shrink into a wrap. */
