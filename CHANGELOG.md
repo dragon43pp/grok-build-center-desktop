@@ -20,7 +20,7 @@
 
 ### 说明
 
-- 对照体积（一律取自发布产物，不取开发机构建，见下一条）：v1.0.3 → v1.0.4，Windows 安装包 98,515,134 → **85,724,875 字节**（93.95 → **81.75 MiB**），减少 **12,790,259 字节（12.98%）**；Linux deb 94,867,712 → 93,823,088；Linux AppImage 122,284,623 → 120,201,086；macOS arm64 dmg 114,497,647 → 112,720,653；macOS x64 dmg 116,304,184 → 114,502,197。macOS 与 Linux 只吃到 node_modules 那一份收益，Windows 还多一份运行时裁剪，所以降幅明显更大。
+- 对照体积（一律取自发布产物，不取开发机构建，见下一条）：v1.0.3 → v1.0.4，Windows 安装包 93.95 → **81.75 MiB**，减少 **12.98%**；Linux deb 90.47 → 89.48 MiB；Linux AppImage 116.62 → 114.63 MiB；macOS arm64 dmg 109.19 → 107.50 MiB；macOS x64 dmg 110.92 → 109.20 MiB。macOS 与 Linux 只吃到 node_modules 那一份收益，Windows 还多一份运行时裁剪，所以降幅明显更大。这里只给 MiB 与百分比，不给字节数：安装包不是逐字节可复现的（同一个提交连续两次构建，实测相差 5 字节），要逐字节校验请用随产物一起发布的 `.sha256`。
 - 开发机构建的产物会与上表有出入，一切以 CI 产物为准：开发机的 `node_modules` 可能留有编译残留，本次实测本地 `node-pty/build`（241,374 字节）会被打进 `app.asar`，CI 的 Windows / macOS 任务不编译 node-pty，因而没有这份内容。本条目里的体积、条目数一律引用 CI 产物的实测值。
 
 ---
@@ -37,7 +37,7 @@ This release does one thing: it makes the installer smaller by dropping Electron
 
 ### Notes
 
-- For scale (every figure read off the published artifacts, never off a developer build — see the next bullet): v1.0.3 → v1.0.4, the Windows installer goes 98,515,134 → **85,724,875 bytes** (93.95 → **81.75 MiB**), a cut of **12,790,259 bytes (12.98%)**; Linux deb 94,867,712 → 93,823,088; Linux AppImage 122,284,623 → 120,201,086; macOS arm64 dmg 114,497,647 → 112,720,653; macOS x64 dmg 116,304,184 → 114,502,197. macOS and Linux receive only the node_modules saving, while Windows also gets the runtime prune, which is why its drop is much larger.
+- For scale (every figure read off the published artifacts, never off a developer build — see the next bullet): v1.0.3 → v1.0.4, the Windows installer goes 93.95 → **81.75 MiB**, a cut of **12.98%**; Linux deb 90.47 → 89.48 MiB; Linux AppImage 116.62 → 114.63 MiB; macOS arm64 dmg 109.19 → 107.50 MiB; macOS x64 dmg 110.92 → 109.20 MiB. macOS and Linux receive only the node_modules saving, while Windows also gets the runtime prune, which is why its drop is much larger. Sizes appear in MiB and percent only, never in bytes: the installer is not byte-reproducible (two consecutive builds of the same commit differ by 5 bytes here), so reach for the `.sha256` published beside each artifact when you need a byte-exact check.
 - A developer build disagrees with the table above, and CI wins. A working tree can keep compile residue such as `node-pty/build` — measured at 241,374 bytes here, and it does get packed into `app.asar` — whereas the Windows and macOS CI jobs never compile node-pty and so never have it. The installer is not byte-reproducible off CI either: two consecutive local builds of the same tree differ by 63 bytes. Everything above is quoted from the CI artifact.
 
 ## [1.0.3] - 2026-10-10
