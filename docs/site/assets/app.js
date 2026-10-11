@@ -617,7 +617,7 @@
   var buttons = document.querySelectorAll('.lang-btn')
   for (var index = 0; index < buttons.length; index += 1) {
     buttons[index].addEventListener('click', function (event) {
-      i18n.apply(event.currentTarget.getAttribute('data-lang'))
+      i18n.switchTo(event.currentTarget.getAttribute('data-lang'))
     })
   }
 

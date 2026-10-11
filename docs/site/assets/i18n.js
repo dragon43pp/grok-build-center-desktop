@@ -498,12 +498,56 @@
     }
   }
 
+  /* Switching language is switching sites, not swapping strings in place.
+   *
+   * The two roots are built from one source and declared against each other with
+   * hreflang, so the URL is meant to carry the language: the Chinese host serves
+   * Chinese, the English host serves English, and a link copied out of either one
+   * lands a fresh visitor in the language the URL promised. Swapping strings in
+   * place breaks that promise, and because resolve() ranks localStorage above the
+   * domain default, a single in-place switch would stick for good. So the control
+   * navigates to the counterpart origin when one is declared, carrying the path and
+   * hash and dropping any ?lang= (a query parameter outranks the domain default, so
+   * a carried ?lang=zh would render the English site in Chinese). With no declared
+   * counterpart — local development, or a build that omitted the two host variables
+   * — there is nowhere to go, and it falls back to the in-place switch. */
+  function switchTo(language) {
+    if (!isLanguage(language)) return
+    if (language === current) return
+
+    var selector = language === 'en'
+      ? 'link[rel="alternate"][hreflang="en"]'
+      : 'link[rel="alternate"][hreflang="zh-Hans"]'
+    var link = document.querySelector(selector)
+    var origin = null
+    if (link && link.getAttribute('href')) {
+      try {
+        var resolved = new URL(link.getAttribute('href'), window.location.href)
+        if (resolved.origin && resolved.origin !== window.location.origin) {
+          origin = resolved.origin
+        }
+      } catch (error) {
+        origin = null
+      }
+    }
+
+    if (!origin) {
+      apply(language)
+      return
+    }
+
+    var target = new URL(window.location.pathname + window.location.search + window.location.hash, origin)
+    target.searchParams.delete('lang')
+    window.location.href = target.href
+  }
+
   window.ASCDemo = window.ASCDemo || {}
   window.ASCDemo.i18n = {
     LANGUAGES: LANGUAGES,
     strings: STRINGS,
     t: t,
     apply: apply,
+    switchTo: switchTo,
     get language() {
       return current
     },
