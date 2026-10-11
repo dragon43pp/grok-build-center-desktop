@@ -4,7 +4,39 @@
 
 > 说明：0.4.7 及更早的条目记录的是本项目早期阶段（当时产品名与现在不同）。为避免旧名残留，文中产品名统一写作「本应用」。条目按历史事实原样保留，未做改写。
 
+> 体例变更（自 1.0.4 起）：条目改为中文优先的双语排布 —— 中文正文在前，其后是一条 `---` 分隔线，英文正文在后；两侧共用同一个 `## [x.y.z] - date` 标题，英文侧以 `### English` 标记。此前的条目保留原有体例与历史原样，未做改写。
+
 ## [Unreleased]
+
+## [1.0.4] - 2026-10-11
+
+这一版只做一件事：把安装包做小 —— 干掉应用从不加载的 Electron 运行时文件，以及 node_modules 里的死重。
+
+### 改进
+
+- **裁掉 8 个 Windows 版 Electron 运行时文件**，应用从不加载它们，合计 38,498,255 字节未压缩（36.7 MiB）/ 11,678,481 字节 LZMA。前 5 个是 `dxcompiler.dll`、`dxil.dll`、`d3dcompiler_47.dll`、`debug.log`、`chrome_200_percent.pak`（32,065,381 字节）：`dxcompiler.dll` 与 `dxil.dll` 是 DirectX Shader Compiler 那一对，只服务 DirectX12 / WebGPU 路径，而本应用没有 WebGPU（`navigator.gpu`、`webgpu` 在 `src/` 与 `electron/` 里零出现），GPU 进程永远不会索取它们，删掉后行为完全一致；`d3dcompiler_47.dll` 在 Windows 10/11 基线里由系统自带（`C:\WINDOWS\SYSTEM32\D3DCompiler_47.dll`），删掉应用目录里那份后进程改加载系统那份；`chrome_200_percent.pak` 用不上，因为界面由 CSS / 矢量 / 字体驱动；`debug.log` 是下载 Electron 时的残留，从不重新生成。另外 3 个是 SwiftShader 三件套 `vk_swiftshader.dll`、`vulkan-1.dll`、`vk_swiftshader_icd.json`（6,432,874 字节）—— SwiftShader 是 Chromium 的**软件 WebGL 后端**，不是合成器。实测（三件套在场 / 删除各跑一遍）：Windows 上真正走软件渲染时（`--disable-gpu`）用的是 ANGLE / D3D11 + 系统自带的 Microsoft Basic Render Driver（WARP），两次报告的 `glRenderer` **逐字相同**（`ANGLE (Microsoft, Microsoft Basic Render Driver (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11)`），`getContext('webgl2')` 两次都可用；唯一会变的是用户显式传 `--use-angle=swiftshader`，此时 `webgl2` 变为不可用，`src/terminal/addons.ts` 接住异常、记下 `webgl-unavailable`、回落到 DOM renderer，窗口依旧完整绘制、零报错、无崩溃。这个名单按平台门控到 Windows（`vk_swiftshader_icd.json` 这个名字各平台都有，而 Linux 没有 GPU 驱动时 SwiftShader 是真实兜底），macOS 与 Linux 上匹配不到任何文件，是空操作。
+- **裁掉 node_modules 里的死重：`app.asar` 从 37,777,655 字节（1144 条）降到 24,439,265 字节（939 条），净减 13,338,390 字节（12.72 MiB）**，由 `package.json` 的 `build.files` 规则裁掉：飞书 SDK 的 ESM 双胞胎 `@larksuiteoapi/node-sdk/es`（−6,220,549；包的 `main` 指向 `lib/index.js`，主进程是 CJS）、node-pty 的编译期目录 `third_party/` + `deps/` + `src/` 与 x64 包用不到的 `prebuilds/win32-arm64/`（合计 −3,063,606）、`protobufjs/dist`（−2,528,908；浏览器 bundle，Node 侧只走 `protobufjs/minimal` → `src/index-minimal`），以及全部 `*.map` 源映射（js-yaml −553,069、axios −523,197、electron-updater −327,521 等，运行时永不加载）。`prebuilds/` 里那个**匹配**当前平台架构的目录、以及 Linux 上必需的 node-pty `build/`（Linux 没有预编译产物，必须真编译）都原样保留。
+- **新增门禁 `scripts/assert-node-modules-trimmed.cjs`**：在 electron-builder 的 `afterPack` 阶段读取 `app.asar` 的条目清单，命中任一被裁路径（或任何 `.map`）就中止打包，防止这些文件悄悄回来。裁剪 Electron 运行时的 `scripts/prune-electron-runtime.cjs` 与既有的资源断言，现在共用 `scripts/after-pack.cjs` 里这唯一的 `afterPack` 钩子；运行时门禁改为**直接读 pruner 导出的同一份清单**，不再维护重复列表。
+
+### 说明
+
+- 对照体积：v1.0.3 的 Windows 安装包是 98,515,134 字节（93.95 MiB）。仅裁 Electron 运行时这一步就把它压到 89,792,049 字节（85.63 MiB），减 8,723,085 字节（8.85%）；**1.0.4 的 Windows 安装包是 85,755,029 字节（81.78 MiB）**，相对 v1.0.3 共减少 12,760,105 字节（12.95%）。macOS 与 Linux 产物的体积由 CI 各自构建时决定。
+
+---
+
+### English
+
+This release does one thing: it makes the installer smaller by dropping Electron runtime files and node_modules dead weight the app never loads.
+
+### Changed
+
+- **Eight Windows Electron runtime files are no longer packaged**, because the app never loads them: 38,498,255 bytes uncompressed (36.7 MiB) / 11,678,481 bytes LZMA in total. The first five — `dxcompiler.dll`, `dxil.dll`, `d3dcompiler_47.dll`, `debug.log`, `chrome_200_percent.pak` (32,065,381 bytes) — can go because `dxcompiler.dll` and `dxil.dll` are the DirectX Shader Compiler pair, which serves only the DirectX12 / WebGPU path, and this app has no WebGPU (`navigator.gpu` and `webgpu` appear nowhere in `src/` or `electron/`), so the GPU process never asks for them and a build with them removed behaves identically; `d3dcompiler_47.dll` is provided by Windows itself on the Windows 10/11 baseline (`C:\WINDOWS\SYSTEM32\D3DCompiler_47.dll`), and the process loads the system copy once the app-local one is gone; `chrome_200_percent.pak` is unused because the UI is CSS / vector / font driven; `debug.log` is leftover noise from the Electron download and is never regenerated. The other three are the SwiftShader trio `vk_swiftshader.dll`, `vulkan-1.dll` and `vk_swiftshader_icd.json` (6,432,874 bytes) — SwiftShader is Chromium's **software WebGL backend**, not its compositor. Measured, with the files present and removed: software rendering on Windows (`--disable-gpu`) goes through ANGLE / D3D11 on the operating system's own Microsoft Basic Render Driver (WARP), and the reported `glRenderer` was byte-for-byte identical both times (`ANGLE (Microsoft, Microsoft Basic Render Driver (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11)`) with `getContext('webgl2')` available either way. The only configuration that changes is a user explicitly passing `--use-angle=swiftshader`: WebGL2 then reports unavailable, `src/terminal/addons.ts` catches it, records `webgl-unavailable` and falls back to the DOM renderer, and the window still paints in full with no error and no crash. The list is gated to Windows on purpose — `vk_swiftshader_icd.json` exists on every platform, and on Linux SwiftShader is the real fallback on a machine with no GPU driver — so on macOS and Linux it matches nothing and the step is a no-op.
+- **node_modules dead weight is gone from the packaged app: `app.asar` drops from 37,777,655 bytes (1144 entries) to 24,439,265 bytes (939 entries), a net 13,338,390 bytes (12.72 MiB)**, removed by the `build.files` rules in `package.json` — the Feishu SDK's ESM twin `@larksuiteoapi/node-sdk/es` (−6,220,549; the package's `main` is `lib/index.js` and the main process is CJS), node-pty's compile-time trees `third_party/` + `deps/` + `src/` plus the `prebuilds/win32-arm64/` directory an x64 package never loads (−3,063,606 in total), `protobufjs/dist` (−2,528,908; the standalone browser bundle, while the Node side goes through `protobufjs/minimal` into `src/index-minimal`), and every `*.map` source map (js-yaml −553,069, axios −523,197, electron-updater −327,521 and so on — never loaded at run time). The one `prebuilds/` directory that **does** match the target platform and architecture is kept, and so is node-pty's `build/`, which Linux needs because node-pty ships no prebuilt binary for it.
+- **A new gate, `scripts/assert-node-modules-trimmed.cjs`, reads the `app.asar` entry list during electron-builder's `afterPack` phase and aborts the build if any trimmed path (or any `.map`) comes back**, so these files cannot silently return. The Electron-runtime pruner `scripts/prune-electron-runtime.cjs` and the existing resource assertions now share the single `afterPack` hook in `scripts/after-pack.cjs`, and the runtime gate reads the pruner's own exported list instead of keeping a duplicate that can drift.
+
+### Notes
+
+- For scale: the v1.0.3 Windows installer was 98,515,134 bytes (93.95 MiB). The Electron-runtime prune alone brought it to 89,792,049 bytes (85.63 MiB), a cut of 8,723,085 bytes (8.85%); **the 1.0.4 Windows installer is 85,755,029 bytes (81.78 MiB)**, 12,760,105 bytes (12.95%) smaller than v1.0.3. The macOS and Linux artifacts are built by CI and carry whatever size those platforms produce.
 
 ## [1.0.3] - 2026-10-10
 
