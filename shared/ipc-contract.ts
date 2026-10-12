@@ -652,6 +652,10 @@ export interface FeishuStatus {
   provision: FeishuProvisionInfo
   /** 最近一次失败的原文（已过滤，不含凭据）。 */
   error: string | null
+  /** 这台电脑在飞书里的稳定 id。还没建身份时为 null。 */
+  computerId: string | null
+  /** 给人点名用的电脑名，设置页可改。 */
+  computerName: string | null
 }
 
 export const FEISHU_IDLE_STATUS: FeishuStatus = {
@@ -667,7 +671,9 @@ export const FEISHU_IDLE_STATUS: FeishuStatus = {
   scan: null,
   pairedUserCount: 0,
   provision: FEISHU_PROVISION_IDLE,
-  error: null
+  error: null,
+  computerId: null,
+  computerName: null
 }
 
 export const FeishuInvokeChannel = {
@@ -678,7 +684,9 @@ export const FeishuInvokeChannel = {
   BindManual: 'feishu:bind-manual',
   Unbind: 'feishu:unbind',
   Reconnect: 'feishu:reconnect',
-  UnpairUser: 'feishu:unpair-user'
+  UnpairUser: 'feishu:unpair-user',
+  RenameComputer: 'feishu:rename-computer',
+  AdoptBitable: 'feishu:adopt-bitable'
 } as const
 
 export const FeishuEventChannel = {
@@ -699,6 +707,8 @@ export interface FeishuApi {
   unbind: () => Promise<FeishuStatus>
   reconnect: () => Promise<FeishuStatus>
   unpairUser: (openId: string) => Promise<FeishuStatus>
+  renameComputer: (name: string) => Promise<FeishuStatus>
+  adoptBitable: (urlOrToken: string) => Promise<FeishuStatus>
   onStatusChange: (cb: (status: FeishuStatus) => void) => () => void
 }
 

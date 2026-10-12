@@ -589,7 +589,14 @@ export const ja = {
     remoteQr: '参加 QR',
     remoteQrHint: 'サイトを閉じたあとはここから読み取れます',
     feishuHint:
-      'この PC のセッションを Feishu から操作できます。一言送れば続行、確認待ちならスマホからそのまま承認。',
+      '複数のパソコンで同じ Feishu ボットを使います。チャットでパソコン名を指定し、ファイルを持つ側でセッションを続けます。',
+    feishuJoinHint:
+      '別のパソコンを足すときは、同じ App ID と App Secret を手入力します。もう一度スキャンすると別のボットになります。',
+    feishuComputerLabel: 'このパソコンの名前',
+    feishuComputerSave: '名前を保存',
+    feishuAdoptLabel: '共有ビットテーブル',
+    feishuAdoptPlaceholder: '1台目のテーブルリンクを貼る',
+    feishuAdopt: 'この表を使う',
     feishuScan: 'QR コードで Feishu に接続',
     feishuScanAgain: 'QR コードを再生成',
     feishuScanWaiting: 'Feishu の確認を待っています…',

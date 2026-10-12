@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-10-12
+
+这一版让多台电脑共用一个飞书机器人。电脑用名字区分，会话只在拥有文件的那台打开。
+
+### 新增
+
+- **多台电脑共用一个飞书机器人。** 设置里给这台电脑起名。另一台手动填同一套 App ID 和 App Secret，不要再扫码；再扫会变成另一个机器人。也可以把第一台的多维表格链接贴进设置，接上同一张表。
+- **飞书里仍是一个对话。** `/电脑` 看谁在线，`/列表` 按电脑列出，`/列表 电脑名` 只看那一台。`/继续 电脑名 序号` 把打开交给拥有文件的那台。会话不会在另一台电脑上打开。
+- **单台电脑的用法不变。** 没有多电脑名单时，`/继续 序号` 仍在本机打开。`/打开` 和 `/dsh` 不带电脑名时，仍按原来的本机行为。
+
+### 说明
+
+- 继续一场会话只发生在存着那场会话文件的电脑上。另一台收到的是转交，文件不会被搬过去。
+- 本版本不带代码签名。安装包体积以 CI 产物为准，这里不写字节数。
+
+---
+
+### English
+
+This release lets several computers share one Feishu bot. Computers are distinguished by name, and a session opens only on the computer that has the files.
+
+### Added
+
+- **Several computers share one Feishu bot.** Name this computer in Settings. Another computer joins by entering the same App ID and App Secret; do not scan again, or the scan creates a different bot. You can also paste the first computer's Bitable link in Settings to join the same base.
+- **One chat still covers every computer.** `/电脑` shows who is online, `/列表` groups sessions by computer, and `/列表 电脑名` shows one computer. `/继续 电脑名 序号` hands the open to the computer that has the files. A session is not opened on a different computer.
+- **A single computer works as before.** Without a multi-computer roster, `/继续 序号` still opens on this machine. `/打开` and `/dsh` without a computer name keep their previous local behavior.
+
+### Notes
+
+- Continuing a session happens only on the computer that stores that session's files. The other computer receives a handoff; the files are not moved.
+- This release is not code-signed. Installer sizes come from the CI artifacts; this entry does not quote bytes.
+
 ## [1.0.5] - 2026-10-12
 
 这一版补上 WorkBuddy AI 的会话打开，把 AI 查找拆成两个各自开关，并拦住主窗口崩溃后的重载循环。

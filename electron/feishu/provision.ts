@@ -22,11 +22,17 @@ import type { BridgeHistorySession } from '../../shared/bridge-protocol'
 import {
   BitableSync,
   feishuErrorCodeOf,
+  findSharedBitable,
   BITABLE_BASE_NAME,
   BITABLE_TABLE_NAME,
+  COMPUTER_TABLE_FIELDS,
+  COMMAND_TABLE_FIELDS,
+  SLOT_TABLE_FIELDS,
+  type BitableComputerScope,
   type BitableRestClient,
   type BitableRecordLedger
 } from './bitable'
+import { FLEET_TABLE_COMMANDS, FLEET_TABLE_COMPUTERS, FLEET_TABLE_SLOTS } from './fleet'
 
 /** 应用缺权限的飞书错误码：`app_scope_not_applied`。 */
 const ERR_APP_SCOPE_NOT_APPLIED = 99991672
@@ -45,6 +51,11 @@ export interface FeishuProvisionDeps {
   statePath: string
   /** 最多同步多少场，防止几百合机器把表格撑爆。 */
   limit?: number
+  /**
+   * 这台电脑的身份。给了之后会话行带上电脑名，并且只删本机的行。
+   * 不给时保持单机旧行为（离线判卷走这条）。
+   */
+  computer?: BitableComputerScope
 }
 
 export interface FeishuProvisionOutcome {
@@ -80,6 +91,9 @@ interface StoredState extends BitableRecordLedger {
   appToken?: string
   tableId?: string
   bitableUrl?: string | null
+  computerTableId?: string
+  commandTableId?: string
+  slotTableId?: string
 }
 
 /**
@@ -132,12 +146,15 @@ export function buildWelcomeCard(input: {
   error: string | null
   permissionUrl: string | null
   appName: string
+  computerName?: string
 }): Record<string, unknown> {
+  const computer = input.computerName ? `「${input.computerName}」` : '这台电脑'
   const lines: string[] = []
   if (input.bitableUrl) {
     lines.push(
-      `**已把这台电脑的会话历史同步进多维表格**${input.synced != null ? `（${input.synced} 场）` : ''}。`,
-      '在表里可以按 CLI 筛、按时间排序、按标题搜，也能直接分享给别人看。'
+      `**已把${computer}的会话历史同步进多维表格**${input.synced != null ? `（${input.synced} 场）` : ''}。`,
+      '多台电脑共用这一个机器人：飞书里一个对话，点名哪台就在哪台继续。',
+      '在表里可以按电脑、按 CLI 筛，也能直接分享给别人看。'
     )
   } else if (input.permissionUrl) {
     lines.push(
@@ -193,10 +210,12 @@ export function buildWelcomeCard(input: {
           tag: 'lark_md',
           content: [
             '**现在能做的**',
-            '- 在多维表格里翻、筛、搜全部历史会话',
-            '- 桌面端标题栏有「飞书」入口，状态灯一眼看连接',
-            '- 想继续某场会话：桌面端「会话历史」里点它就行',
-            '**下一版**：直接在这里给机器人发指令（列会话 / 续会话 / 转达一句话）'
+            '- /电脑 —— 看哪些电脑在线',
+            '- /列表 —— 最近可恢复的会话；/列表 电脑名 只看一台',
+            '- /继续 序号 —— 在拥有这场会话的电脑上打开；多台时写 /继续 电脑名 序号',
+            '- /打开 —— 打开那台电脑上最近的国内 WorkBuddy',
+            '- /dsh —— 打开那台电脑上最近的 DSH',
+            '**另一台电脑加入**：在那台的设置里手动填同一套 App ID 和 App Secret，不要再扫码。再扫会变成另一个机器人。'
           ].join('\n')
         }
       },
@@ -241,7 +260,8 @@ export async function provisionFeishuWorkspace(
 
   try {
     if (!appToken) {
-      const created = await sync.createBase(BITABLE_BASE_NAME)
+      const shared = await findSharedBitable(deps.client, BITABLE_BASE_NAME)
+      const created = shared ?? (await sync.createBase(BITABLE_BASE_NAME))
       appToken = created.appToken
       bitableUrl = created.url
       state.appToken = appToken
@@ -262,8 +282,30 @@ export async function provisionFeishuWorkspace(
       await saveState(deps.statePath, state)
     }
 
+    if (deps.computer) {
+      state.computerTableId = await sync.ensureNamedTable(
+        appToken,
+        FLEET_TABLE_COMPUTERS,
+        COMPUTER_TABLE_FIELDS,
+        '全部电脑'
+      )
+      state.commandTableId = await sync.ensureNamedTable(
+        appToken,
+        FLEET_TABLE_COMMANDS,
+        COMMAND_TABLE_FIELDS,
+        '全部命令'
+      )
+      state.slotTableId = await sync.ensureNamedTable(
+        appToken,
+        FLEET_TABLE_SLOTS,
+        SLOT_TABLE_FIELDS,
+        '全部序号'
+      )
+      await saveState(deps.statePath, state)
+    }
+
     const sessions = (await deps.history()).slice(0, deps.limit ?? 300)
-    const stats = await sync.sync(appToken, tableId, sessions)
+    const stats = await sync.sync(appToken, tableId, sessions, false, deps.computer)
     await saveState(deps.statePath, state)
 
     const card = buildWelcomeCard({
@@ -271,7 +313,8 @@ export async function provisionFeishuWorkspace(
       synced: stats.total,
       error: null,
       permissionUrl: null,
-      appName: 'Agent Session Center'
+      appName: 'Agent Session Center',
+      computerName: deps.computer?.computerName
     })
     const welcomeError = await sendToAll(deps, card)
 
@@ -306,7 +349,8 @@ export async function provisionFeishuWorkspace(
         synced: null,
         error: message,
         permissionUrl,
-        appName: 'Agent Session Center'
+        appName: 'Agent Session Center',
+        computerName: deps.computer?.computerName
       })
       welcomeError = await sendToAll(deps, card)
     }
@@ -335,4 +379,96 @@ export function summarizeProvision(outcome: FeishuProvisionOutcome): string {
   if (outcome.permissionUrl) return '缺多维表格权限，点卡片里的按钮补授权'
   if (outcome.error) return `同步失败：${outcome.error}`
   return ''
+}
+
+export interface FeishuFleetBinding {
+  appToken: string
+  bitableUrl: string | null
+  sessionTableId: string
+  computerTableId: string
+  commandTableId: string
+  slotTableId: string
+}
+
+/**
+ * 连接之后补齐电脑 / 命令 / 序号三张表。Base 还没建好时返回 null，
+ * 调用方下一轮再试，不要在这里新建第二个 Base。
+ */
+export async function ensureFeishuFleetTables(deps: {
+  appId: string
+  client: BitableRestClient
+  statePath: string
+}): Promise<FeishuFleetBinding | null> {
+  const state = await loadState(deps.statePath, deps.appId)
+  if (!state.appToken || !state.tableId) return null
+  const sync = new BitableSync(deps.client, state)
+  state.computerTableId = await sync.ensureNamedTable(
+    state.appToken,
+    FLEET_TABLE_COMPUTERS,
+    COMPUTER_TABLE_FIELDS,
+    '全部电脑'
+  )
+  state.commandTableId = await sync.ensureNamedTable(
+    state.appToken,
+    FLEET_TABLE_COMMANDS,
+    COMMAND_TABLE_FIELDS,
+    '全部命令'
+  )
+  state.slotTableId = await sync.ensureNamedTable(
+    state.appToken,
+    FLEET_TABLE_SLOTS,
+    SLOT_TABLE_FIELDS,
+    '全部序号'
+  )
+  state.appId = deps.appId
+  await saveState(deps.statePath, state)
+  return {
+    appToken: state.appToken,
+    bitableUrl: state.bitableUrl ?? null,
+    sessionTableId: state.tableId,
+    computerTableId: state.computerTableId,
+    commandTableId: state.commandTableId,
+    slotTableId: state.slotTableId
+  }
+}
+
+/** 增量同步本机会话。不发引导卡。表还没建好就直接返回。 */
+export async function syncFeishuSessionTable(deps: {
+  appId: string
+  client: BitableRestClient
+  statePath: string
+  history: () => Promise<BridgeHistorySession[]>
+  computer: BitableComputerScope
+  limit?: number
+}): Promise<void> {
+  const state = await loadState(deps.statePath, deps.appId)
+  if (!state.appToken || !state.tableId) return
+  const sync = new BitableSync(deps.client, state)
+  if (Object.keys(state.records).length === 0) {
+    await sync.rebuildLedger(state.appToken, state.tableId)
+  }
+  const sessions = (await deps.history()).slice(0, deps.limit ?? 300)
+  await sync.sync(state.appToken, state.tableId, sessions, false, deps.computer)
+  await saveState(deps.statePath, state)
+}
+
+/**
+ * 第二台电脑把第一台的多维表格链接贴过来。只改 appToken，清掉表 id 和账本，
+ * 下一轮引导会在这个 Base 里复用同名表，不会再新建一个。
+ */
+export async function adoptFeishuBitableToken(
+  statePath: string,
+  appId: string,
+  appToken: string
+): Promise<void> {
+  const state = await loadState(statePath, appId)
+  state.appId = appId
+  state.appToken = appToken
+  state.tableId = undefined
+  state.computerTableId = undefined
+  state.commandTableId = undefined
+  state.slotTableId = undefined
+  state.records = {}
+  state.bitableUrl = null
+  await saveState(statePath, state)
 }

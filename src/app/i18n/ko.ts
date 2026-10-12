@@ -590,7 +590,14 @@ export const ko = {
     remoteQr: '참가 QR',
     remoteQrHint: '웹사이트를 닫은 뒤 여기서 스캔하세요',
     feishuHint:
-      '이 PC의 세션을 Feishu에서 다룹니다. 한 줄 보내면 이어서 진행하고, 확인을 기다리면 폰에서 바로 승인하세요.',
+      '여러 컴퓨터가 하나의 Feishu 봇을 씁니다. 대화에서 컴퓨터 이름을 지정하면, 파일이 있는 그 컴퓨터에서 세션이 이어집니다.',
+    feishuJoinHint:
+      '다른 컴퓨터를 넣을 때는 같은 App ID와 App Secret을 직접 입력하세요. 다시 스캔하면 다른 봇이 됩니다.',
+    feishuComputerLabel: '이 컴퓨터 이름',
+    feishuComputerSave: '이름 저장',
+    feishuAdoptLabel: '공유 다차원 테이블',
+    feishuAdoptPlaceholder: '첫 번째 컴퓨터의 테이블 링크',
+    feishuAdopt: '이 표 사용',
     feishuScan: 'QR로 Feishu 연결',
     feishuScanAgain: 'QR 코드 다시 만들기',
     feishuScanWaiting: 'Feishu 확인을 기다리는 중…',

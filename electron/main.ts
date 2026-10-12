@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog } from 'electron'
 import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { createWindow } from './window'
 import { attachMainRendererRecovery } from './main-window-recovery'
@@ -458,6 +459,9 @@ const feishuRouter = createFeishuRouter({
     }
     return openDomesticWorkbuddy(latest.sessionId)
   },
+  get fleet() {
+    return feishu.fleetPort() ?? undefined
+  },
   openDshSession: async () => {
     // 和 WorkBuddy 一样单取 1 条：混在全部 agent 的前 300 里会被挤掉。
     const result = await controlPlane.handle('sessions.history', {
@@ -501,7 +505,10 @@ const feishu = new FeishuService({
   // 连接成功后自动把会话历史同步进多维表格（对齐 agent-hub 的体验）。
   // 没有这两项时 maybeProvision 直接跳过 —— 只有连接没有引导是半成品。
   history: feishuHistory,
-  bitableStatePath: join(app.getPath('userData'), 'feishu-bitable.json')
+  bitableStatePath: join(app.getPath('userData'), 'feishu-bitable.json'),
+  computerPath: join(app.getPath('userData'), 'feishu-computer.json'),
+  computerFallbackName: hostname() || '这台电脑',
+  onFleetCommand: (command) => feishuRouter.executeLocal(command)
 })
 
 const updateService = new UpdateService({

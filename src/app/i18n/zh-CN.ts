@@ -593,7 +593,14 @@ export const zhCN = {
     remoteQr: '加入二维码',
     remoteQrHint: '网页关掉后可扫这里补连',
     feishuHint:
-      '把本机会话接到飞书：发一句话让它继续，卡在等你确认时手机上直接点。',
+      '多台电脑共用一个飞书机器人。对话里点名电脑，会话在拥有文件的那台继续。',
+    feishuJoinHint:
+      '另一台电脑加入时，手动填同一套 App ID 和 App Secret，不要再扫码。再扫会变成另一个机器人。',
+    feishuComputerLabel: '这台电脑的名字',
+    feishuComputerSave: '保存名字',
+    feishuAdoptLabel: '共享多维表格',
+    feishuAdoptPlaceholder: '贴第一台电脑的表格链接',
+    feishuAdopt: '使用这张表',
     feishuScan: '扫码连接飞书',
     feishuScanAgain: '重新生成二维码',
     feishuScanWaiting: '等待飞书确认…',

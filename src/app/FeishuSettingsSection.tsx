@@ -29,12 +29,18 @@ export default function FeishuSettingsSection() {
   const [manualAppId, setManualAppId] = useState('')
   const [manualAppSecret, setManualAppSecret] = useState('')
   const [manualDomain, setManualDomain] = useState<FeishuDomain>('feishu')
+  const [computerDraft, setComputerDraft] = useState('')
+  const [bitableDraft, setBitableDraft] = useState('')
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     void window.feishuApi.getStatus().then(setStatus)
     return window.feishuApi.onStatusChange(setStatus)
   }, [])
+
+  useEffect(() => {
+    setComputerDraft(status.computerName ?? '')
+  }, [status.computerName])
 
   // 只有等扫码的时候才需要走秒。依赖里刻意只放票上的两个标量：
   // 放整个 scan 对象的话，每一次广播都会重建定时器。
@@ -71,6 +77,9 @@ export default function FeishuSettingsSection() {
       <div className="border-b border-border-faint py-3.5">
         <p className="font-pingfang text-[12px] font-medium text-text-secondary">
           {strings.settings.feishuHint}
+        </p>
+        <p className="mt-1 font-pingfang text-[11px] text-text-faint">
+          {strings.settings.feishuJoinHint}
         </p>
         <div
           data-testid="settings-feishu-metrics"
@@ -190,6 +199,62 @@ export default function FeishuSettingsSection() {
           )}
         </div>
       </div>
+
+      {status.computerId && (
+        <div className="border-b border-border-faint py-3.5">
+          <label className="block font-pingfang text-[11px] text-text-faint">
+            {strings.settings.feishuComputerLabel}
+            <input
+              data-testid="settings-feishu-computer-name"
+              value={computerDraft}
+              onChange={(event) => setComputerDraft(event.target.value)}
+              maxLength={32}
+              spellCheck={false}
+              className="mt-1 w-full rounded-lg border border-border-default bg-input px-2.5 py-1.5 font-pingfang text-[12px] text-text-primary outline-none focus:border-border-strong"
+            />
+          </label>
+          <button
+            type="button"
+            data-testid="settings-feishu-computer-save"
+            disabled={busy || !computerDraft.trim()}
+            onClick={() => run(() => window.feishuApi.renameComputer(computerDraft))}
+            className="mt-2 cursor-target rounded-lg border border-border-default bg-input px-2.5 py-1.5 font-pingfang text-[11px] font-medium text-text-muted transition-colors hover:bg-input-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {strings.settings.feishuComputerSave}
+          </button>
+        </div>
+      )}
+
+      {bound && (
+        <div className="border-b border-border-faint py-3.5">
+          <label className="block font-pingfang text-[11px] text-text-faint">
+            {strings.settings.feishuAdoptLabel}
+            <input
+              data-testid="settings-feishu-bitable-url"
+              value={bitableDraft}
+              onChange={(event) => setBitableDraft(event.target.value)}
+              placeholder={strings.settings.feishuAdoptPlaceholder}
+              spellCheck={false}
+              className="mt-1 w-full rounded-lg border border-border-default bg-input px-2.5 py-1.5 font-maple text-[12px] text-text-primary outline-none focus:border-border-strong"
+            />
+          </label>
+          <button
+            type="button"
+            data-testid="settings-feishu-bitable-adopt"
+            disabled={busy || !bitableDraft.trim()}
+            onClick={() =>
+              run(async () => {
+                const next = await window.feishuApi.adoptBitable(bitableDraft)
+                if (!next.error) setBitableDraft('')
+                return next
+              })
+            }
+            className="mt-2 cursor-target rounded-lg border border-border-default bg-input px-2.5 py-1.5 font-pingfang text-[11px] font-medium text-text-muted transition-colors hover:bg-input-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {strings.settings.feishuAdopt}
+          </button>
+        </div>
+      )}
 
       {status.scan && (
         <div className="border-b border-border-faint py-3.5">

@@ -66,11 +66,44 @@ export const SESSION_TABLE_FIELDS: readonly BitableFieldSpec[] = [
   { name: '标题', type: BITABLE_FIELD_TYPE.text },
   { name: '会话ID', type: BITABLE_FIELD_TYPE.text },
   { name: 'CLI', type: BITABLE_FIELD_TYPE.singleSelect, options: BITABLE_CLI_OPTIONS },
+  { name: '代理ID', type: BITABLE_FIELD_TYPE.text },
+  { name: '电脑', type: BITABLE_FIELD_TYPE.text },
+  { name: '电脑ID', type: BITABLE_FIELD_TYPE.text },
   { name: '项目目录', type: BITABLE_FIELD_TYPE.text },
   { name: '最后活动', type: BITABLE_FIELD_TYPE.date },
   { name: '消息数', type: BITABLE_FIELD_TYPE.number },
   { name: '可恢复', type: BITABLE_FIELD_TYPE.checkbox },
   { name: '不能恢复原因', type: BITABLE_FIELD_TYPE.text }
+]
+
+/** 心跳 / 命令 / 序号三张表的字段。和会话表放在同一个 Base 里。 */
+export const COMPUTER_TABLE_FIELDS: readonly BitableFieldSpec[] = [
+  { name: '电脑ID', type: BITABLE_FIELD_TYPE.text },
+  { name: '电脑', type: BITABLE_FIELD_TYPE.text },
+  { name: '最近心跳', type: BITABLE_FIELD_TYPE.date }
+]
+
+export const COMMAND_TABLE_FIELDS: readonly BitableFieldSpec[] = [
+  { name: '命令ID', type: BITABLE_FIELD_TYPE.text },
+  { name: '目标电脑ID', type: BITABLE_FIELD_TYPE.text },
+  { name: '动作', type: BITABLE_FIELD_TYPE.text },
+  { name: '参数', type: BITABLE_FIELD_TYPE.text },
+  { name: '状态', type: BITABLE_FIELD_TYPE.text },
+  { name: '结果', type: BITABLE_FIELD_TYPE.text },
+  { name: '发起人', type: BITABLE_FIELD_TYPE.text },
+  { name: '创建时间', type: BITABLE_FIELD_TYPE.date }
+]
+
+export const SLOT_TABLE_FIELDS: readonly BitableFieldSpec[] = [
+  { name: '用户', type: BITABLE_FIELD_TYPE.text },
+  { name: '种类', type: BITABLE_FIELD_TYPE.text },
+  { name: '序号', type: BITABLE_FIELD_TYPE.number },
+  { name: '电脑ID', type: BITABLE_FIELD_TYPE.text },
+  { name: '电脑', type: BITABLE_FIELD_TYPE.text },
+  { name: '会话ID', type: BITABLE_FIELD_TYPE.text },
+  { name: 'CLI', type: BITABLE_FIELD_TYPE.text },
+  { name: '标题', type: BITABLE_FIELD_TYPE.text },
+  { name: '更新时间', type: BITABLE_FIELD_TYPE.date }
 ]
 
 const AGENT_LABELS: Record<string, string> = {
@@ -99,15 +132,41 @@ export function cliOptionOf(agent: string): string {
  * ⚠️ 日期字段要的是**毫秒**时间戳（13 位）。传秒会被解析成 1970 年 ——
  * agent-hub 时代就踩过，别再踩一次。`updatedAt` 是 ISO 串，缺省表示该 CLI 没记。
  */
-export function historySessionToFields(session: BridgeHistorySession): Record<string, unknown> {
+export interface BitableComputerScope {
+  computerId: string
+  computerName: string
+}
+
+/**
+ * 账本键。带电脑 id 时两台机器的同一会话 id 不会撞成一行；
+ * 不带时保持旧键，单机同步和离线判卷不用改。
+ */
+export function sessionLedgerKey(
+  agent: string,
+  sessionId: string,
+  computerId?: string
+): string {
+  const cli = cliOptionOf(agent)
+  return computerId ? `${computerId}|${cli}|${sessionId}` : `${cli}|${sessionId}`
+}
+
+export function historySessionToFields(
+  session: BridgeHistorySession,
+  scope?: BitableComputerScope
+): Record<string, unknown> {
   const fields: Record<string, unknown> = {
     标题: session.title?.trim() || '(未命名)',
     会话ID: session.sessionId,
     CLI: cliOptionOf(session.agent),
+    代理ID: session.agent,
     项目目录: session.workspace || '',
     消息数: Number.isFinite(session.messageCount) ? session.messageCount : 0,
     可恢复: Boolean(session.resumable),
     不能恢复原因: session.blockedReason || ''
+  }
+  if (scope) {
+    fields['电脑'] = scope.computerName
+    fields['电脑ID'] = scope.computerId
   }
   const updatedAtMs = session.updatedAt ? Date.parse(session.updatedAt) : NaN
   if (Number.isFinite(updatedAtMs)) fields['最后活动'] = updatedAtMs
@@ -189,6 +248,13 @@ export interface BitableRestClient {
           type: number
           property?: { options: Array<{ name: string }> }
         }
+      }) => Promise<BitableApiResponse>
+      /**
+       * 旧表补列。假客户端可以不实现 —— 新建的表已经带齐字段时不会走到这里。
+       */
+      create?: (args: {
+        path: { app_token: string; table_id: string }
+        data: { field_name: string; type: number }
       }) => Promise<BitableApiResponse>
     }
     appTableRecord: {
@@ -336,42 +402,92 @@ export class BitableSync {
    * 之后每加一个 agent（比如 WorkBuddy）都得给旧表补 option，否则写入直接报错。
    */
   async ensureTable(appToken: string, tableName: string = BITABLE_TABLE_NAME): Promise<string> {
+    const tableId = await this.ensureNamedTable(
+      appToken,
+      tableName,
+      SESSION_TABLE_FIELDS,
+      '全部会话'
+    )
+    await this.syncCliOptions(appToken, tableId)
+    await this.ensureMissingFields(appToken, tableId, SESSION_TABLE_FIELDS)
+    return tableId
+  }
+
+  /**
+   * 按名字复用或新建一张表。会话表、电脑表、命令表、序号表都走这里，
+   * 避免每轮同步多出一张同名空表。
+   */
+  async ensureNamedTable(
+    appToken: string,
+    tableName: string,
+    fields: readonly BitableFieldSpec[],
+    viewName: string
+  ): Promise<string> {
     const existing = await this.listTables(appToken)
     const found = existing.find((table) => table.name === tableName)
-    let tableId: string
     if (found) {
-      tableId = found.tableId
-    } else {
-      const data = await assertOk(
-        await this.client.bitable.appTable.create({
-          path: { app_token: appToken },
-          data: {
-            table: {
-              name: tableName,
-              default_view_name: '全部会话',
-              fields: SESSION_TABLE_FIELDS.map((field) => ({
-                field_name: field.name,
-                type: field.type,
-                ...(field.options
-                  ? {
-                      property: {
-                        options: field.options.map((name) => ({ name }))
-                      }
-                    }
-                  : {})
-              }))
-            }
-          }
-        }),
-        '建数据表'
-      )
-      if (!data.table_id) {
-        throw new BitableApiError(-1, '返回里没有 table_id', '建数据表')
-      }
-      tableId = data.table_id
+      await this.ensureMissingFields(appToken, found.tableId, fields)
+      return found.tableId
     }
-    await this.syncCliOptions(appToken, tableId)
-    return tableId
+    const data = await assertOk(
+      await this.client.bitable.appTable.create({
+        path: { app_token: appToken },
+        data: {
+          table: {
+            name: tableName,
+            default_view_name: viewName,
+            fields: fields.map((field) => ({
+              field_name: field.name,
+              type: field.type,
+              ...(field.options
+                ? {
+                    property: {
+                      options: field.options.map((name) => ({ name }))
+                    }
+                  }
+                : {})
+            }))
+          }
+        }
+      }),
+      '建数据表'
+    )
+    if (!data.table_id) {
+      throw new BitableApiError(-1, '返回里没有 table_id', '建数据表')
+    }
+    return data.table_id
+  }
+
+  /** 旧表缺列时补上。没有 create 实现就跳过（离线假客户端新建表已经带齐字段）。 */
+  async ensureMissingFields(
+    appToken: string,
+    tableId: string,
+    fields: readonly BitableFieldSpec[]
+  ): Promise<void> {
+    const createField = this.client.bitable.appTableField.create
+    if (!createField) return
+    const data = await assertOk(
+      await this.client.bitable.appTableField.list({
+        path: { app_token: appToken, table_id: tableId },
+        params: { page_size: 100 }
+      }),
+      '列字段'
+    )
+    const existing = new Set(
+      (data.items ?? [])
+        .map((item) => item.field_name)
+        .filter((name): name is string => typeof name === 'string')
+    )
+    for (const field of fields) {
+      if (existing.has(field.name) || field.options) continue
+      await assertOk(
+        await createField({
+          path: { app_token: appToken, table_id: tableId },
+          data: { field_name: field.name, type: field.type }
+        }),
+        `补字段 ${field.name}`
+      )
+    }
   }
 
   /**
@@ -430,14 +546,17 @@ export class BitableSync {
       )
       for (const record of data.items ?? []) {
         const fields = record.fields ?? {}
-        const sid = typeof fields['会话ID'] === 'string' ? (fields['会话ID'] as string) : ''
-        const agent = typeof fields['CLI'] === 'string' ? (fields['CLI'] as string) : ''
-        // 单选有时返回数组，宽容处理。
+        const sid = ledgerCell(fields['会话ID'])
+        const agent = ledgerCell(fields['CLI'])
         const agentValue = Array.isArray(fields['CLI'])
-          ? String((fields['CLI'] as Array<unknown>)[0] ?? '')
+          ? ledgerCell((fields['CLI'] as Array<unknown>)[0])
           : agent
+        const computerId = ledgerCell(fields['电脑ID'])
         if (sid && record.record_id) {
-          index[`${agentValue}|${sid}`] = { rid: record.record_id, hash: '' }
+          const key = computerId
+            ? `${computerId}|${agentValue}|${sid}`
+            : `${agentValue}|${sid}`
+          index[key] = { rid: record.record_id, hash: '' }
         }
       }
       if (!data.has_more) break
@@ -456,17 +575,27 @@ export class BitableSync {
     appToken: string,
     tableId: string,
     sessions: readonly BridgeHistorySession[],
-    dryRun = false
+    dryRun = false,
+    scope?: BitableComputerScope
   ): Promise<BitableSyncStats> {
     const live = new Map<string, { fields: Record<string, unknown>; hash: string }>()
     for (const session of sessions) {
       // 没有 id 的会话没有稳定身份，跳过 —— 否则过期后留下孤儿行。
       if (!session.sessionId) continue
-      const fields = historySessionToFields(session)
+      const fields = historySessionToFields(session, scope)
       // 键里的 agent 一侧必须用**表里落的名字**（cliOptionOf），不是原始 id：
       // rebuildLedger 从表里读回来的 CLI 字段就是显示名。两边不同源的话，
       // 账本一丢、重建的键就对不上，几百行会被当成新行全部重插一遍。
-      live.set(`${cliOptionOf(session.agent)}|${session.sessionId}`, {
+      const key = sessionLedgerKey(session.agent, session.sessionId, scope?.computerId)
+      if (scope?.computerId) {
+        const legacyKey = sessionLedgerKey(session.agent, session.sessionId)
+        const legacy = this.ledger.records[legacyKey]
+        if (legacy && !this.ledger.records[key]) {
+          this.ledger.records[key] = legacy
+          delete this.ledger.records[legacyKey]
+        }
+      }
+      live.set(key, {
         fields,
         hash: fieldsHash(fields)
       })
@@ -481,8 +610,14 @@ export class BitableSync {
       else if (known.hash !== item.hash) toUpdate.push([key, known.rid, item])
       else unchanged += 1
     }
+    const ownPrefix = scope?.computerId ? `${scope.computerId}|` : ''
     const toDelete = Object.entries(this.ledger.records)
-      .filter(([key]) => !live.has(key))
+      .filter(([key]) => {
+        if (live.has(key)) return false
+        // 带了电脑范围就只删这台电脑的行。别的电脑、以及还没写电脑ID的旧行留着。
+        if (ownPrefix) return key.startsWith(ownPrefix)
+        return true
+      })
       .map(([key, record]) => [key, record.rid] as const)
 
     const stats: BitableSyncStats = {
@@ -544,4 +679,67 @@ export class BitableSync {
 
     return stats
   }
+}
+
+function ledgerCell(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  if (Array.isArray(value)) {
+    const first = value[0]
+    if (typeof first === 'string') return first
+    if (first && typeof first === 'object' && 'text' in first) {
+      return String((first as { text: unknown }).text ?? '')
+    }
+  }
+  if (value && typeof value === 'object' && 'text' in value) {
+    return String((value as { text: unknown }).text ?? '')
+  }
+  return ''
+}
+
+/**
+ * 第二台电脑本地还没有 appToken 时，先在应用云空间里找同名多维表格。
+ * 没有云空间权限、或找不到，就返回 null，调用方再新建。
+ */
+export async function findSharedBitable(
+  client: BitableRestClient,
+  name: string = BITABLE_BASE_NAME
+): Promise<{ appToken: string; url: string | null } | null> {
+  const list = (
+    client as {
+      drive?: {
+        file?: {
+          list?: (args: {
+            params?: { page_size?: number; page_token?: string }
+          }) => Promise<{
+            code?: number
+            data?: {
+              files?: Array<{ token?: string; name?: string; type?: string; url?: string }>
+              has_more?: boolean
+              next_page_token?: string
+            }
+          }>
+        }
+      }
+    }
+  ).drive?.file?.list
+  if (!list) return null
+  try {
+    let pageToken: string | undefined
+    for (let page = 0; page < 5; page += 1) {
+      const response = await list({
+        params: { page_size: 200, ...(pageToken ? { page_token: pageToken } : {}) }
+      })
+      if (Number(response?.code ?? 0) !== 0) return null
+      const files = response.data?.files ?? []
+      const hit = files.find((file) => file.type === 'bitable' && file.name === name && file.token)
+      if (hit?.token) return { appToken: hit.token, url: hit.url ?? null }
+      if (!response.data?.has_more) return null
+      pageToken = response.data.next_page_token
+      if (!pageToken) return null
+    }
+  } catch {
+    return null
+  }
+  return null
 }

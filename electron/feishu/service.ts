@@ -39,9 +39,15 @@ import { FeishuStore, isFeishuAppId, maskAppId, type FeishuBinding } from './sto
 import {
   provisionFeishuWorkspace,
   feishuProvisionIdle,
-  type FeishuProvisionOutcome
+  ensureFeishuFleetTables,
+  syncFeishuSessionTable,
+  adoptFeishuBitableToken
 } from './provision'
 import type { BitableRestClient } from './bitable'
+import { loadOrCreateComputer, saveComputerName, type FeishuComputer } from './computer'
+import { appTokenFromBitableUrl } from './fleet'
+import { FleetStore } from './fleet-store'
+import type { FeishuFleetPort, FleetLocalCommand } from './router'
 
 /**
  * 服务层对长连接的**全部**依赖。
@@ -96,6 +102,17 @@ export interface FeishuServiceOptions {
   fetchImpl?: typeof fetch
   /** 测试用：替换长连接实现。生产代码不要传。 */
   channelFactory?: (options: FeishuChannelOptions) => FeishuChannelLike
+  /**
+   * 这台电脑的身份文件。给了之后，连接成功会心跳、同步本机会话，并领走
+   * 发给这台电脑的命令。不给就保持单机（服务判卷走这条）。
+   */
+  computerPath?: string
+  /** 第一次建身份时用的名字，一般是主机名。 */
+  computerFallbackName?: string
+  /** 多电脑轮询间隔。默认 5 秒。判卷可以传大值，dispose 仍会清掉。 */
+  fleetTickMs?: number
+  /** 别的电脑交过来的命令，在本机执行。不传就不领命令。 */
+  onFleetCommand?: (command: FleetLocalCommand) => Promise<void>
 }
 
 export class FeishuService {
@@ -126,6 +143,16 @@ export class FeishuService {
   private provisioning = false
   private readonly history: (() => Promise<BridgeHistorySession[]>) | undefined
   private readonly bitableStatePath: string | undefined
+  private readonly computerPath: string | undefined
+  private readonly computerFallbackName: string
+  private readonly fleetTickMs: number
+  private readonly onFleetCommand: ((command: FleetLocalCommand) => Promise<void>) | undefined
+  private computer: FeishuComputer | null = null
+  private fleetTimer: ReturnType<typeof setInterval> | null = null
+  private fleetTickRunning = false
+  private fleetStoreCache: FleetStore | null = null
+  private lastHeartbeatAt = 0
+  private lastSessionSyncAt = 0
 
   constructor(options: FeishuServiceOptions) {
     this.store = options.store
@@ -138,6 +165,10 @@ export class FeishuService {
       options.channelFactory ?? ((channelOptions) => new FeishuChannel(channelOptions))
     this.history = options.history
     this.bitableStatePath = options.bitableStatePath
+    this.computerPath = options.computerPath
+    this.computerFallbackName = options.computerFallbackName || '这台电脑'
+    this.fleetTickMs = options.fleetTickMs ?? 5_000
+    this.onFleetCommand = options.onFleetCommand
   }
 
   /**
@@ -148,6 +179,13 @@ export class FeishuService {
   async initialize(): Promise<FeishuStatus> {
     if (this.ready) return this.snapshot()
     this.ready = true
+    if (this.computerPath) {
+      try {
+        this.computer = await loadOrCreateComputer(this.computerPath, this.computerFallbackName)
+      } catch (error) {
+        this.error = message(error, '没能记下这台电脑的名字')
+      }
+    }
     this.binding = await this.store.read()
     if (this.binding) {
       await this.startChannel()
@@ -284,7 +322,87 @@ export class FeishuService {
     return this.emit()
   }
 
+  /** 改这台电脑在飞书里的名字。id 不变，下一轮心跳带上新名字。 */
+  async renameComputer(name: string): Promise<FeishuStatus> {
+    if (!this.computerPath) {
+      this.error = '这台电脑的名字还没接到设置里'
+      return this.emit()
+    }
+    try {
+      this.computer = await saveComputerName(this.computerPath, name, this.computerFallbackName)
+      this.lastHeartbeatAt = 0
+      this.error = null
+    } catch (error) {
+      this.error = message(error, '没能保存电脑名字')
+    }
+    return this.emit()
+  }
+
+  /**
+   * 第二台电脑贴第一台的多维表格链接。只改 appToken，下一轮引导复用同名表。
+   */
+  async adoptBitable(raw: string): Promise<FeishuStatus> {
+    const token = appTokenFromBitableUrl(raw)
+    if (!token) {
+      this.error = '多维表格链接认不出来。贴第一台电脑设置页里的表格地址。'
+      return this.emit()
+    }
+    if (!this.binding || !this.bitableStatePath) {
+      this.error = '先连上飞书，再贴共享表格。'
+      return this.emit()
+    }
+    try {
+      await adoptFeishuBitableToken(this.bitableStatePath, this.binding.appId, token)
+      this.fleetStoreCache = null
+      this.provision = feishuProvisionIdle()
+      this.error = null
+      if (this.connection === 'connected') void this.maybeProvision()
+    } catch (error) {
+      this.error = message(error, '没能改用这张共享表格')
+    }
+    return this.emit()
+  }
+
+  /**
+   * 给入站路由用的调度口。身份还没建好时返回 null，路由就按单机处理。
+   * 每次调用都读当前名字，改名后下一句指令就用新名字。
+   */
+  fleetPort(): FeishuFleetPort | null {
+    if (!this.computer) return null
+    const computer = this.computer
+    return {
+      self: () => ({ id: computer.id, name: this.computer?.name || computer.name }),
+      computers: async () => {
+        const store = await this.fleetStore()
+        if (!store) return []
+        return store.listComputers()
+      },
+      enqueue: async (command) => {
+        const store = await this.fleetStore()
+        if (!store) throw new Error('共享表还没建好。先在设置里连上飞书，或贴上第一台的表格链接。')
+        return store.putCommand({ ...command, createdAt: Date.now() })
+      },
+      publishSlots: async (openId, kind, slots) => {
+        const store = await this.fleetStore()
+        if (!store) return
+        await store.replaceSlots(openId, kind, slots)
+      },
+      readSlots: async (openId, kind) => {
+        const store = await this.fleetStore()
+        if (!store) return null
+        return store.readSlots(openId, kind)
+      },
+      remoteSessions: async (computerId) => {
+        const store = await this.fleetStore()
+        if (!store) return []
+        const rows = await store.listSessions(computerId)
+        return rows.map(({ sid, agent, title }) => ({ sid, agent, title }))
+      }
+    }
+  }
+
   async dispose(): Promise<void> {
+    this.stopFleetTimer()
     this.cancelScan()
     await this.disposeChannel()
   }
@@ -322,7 +440,15 @@ export class FeishuService {
             error: '通道不支持发消息',
             code: null
           },
-        statePath: this.bitableStatePath
+        statePath: this.bitableStatePath,
+        ...(this.computer
+          ? {
+              computer: {
+                computerId: this.computer.id,
+                computerName: this.computer.name
+              }
+            }
+          : {})
       })
       this.provision = {
         state: outcome.state,
@@ -447,7 +573,12 @@ export class FeishuService {
           this.emit()
           // 连上之后的「下文」就在这里触发：建表、同步历史、发引导卡。
           // 失败不重试到死 —— 下次重连（用户点「重连」）会再试一次。
-          if (state === 'connected') void this.maybeProvision()
+          if (state === 'connected') {
+            void this.maybeProvision()
+            this.startFleetTimer()
+          } else {
+            this.stopFleetTimer()
+          }
         }
       }
     })
@@ -455,6 +586,7 @@ export class FeishuService {
 
     const started = await channel.start()
     if (started.error) {
+      this.stopFleetTimer()
       this.connection = 'failed'
       this.error = started.error
       this.emit()
@@ -462,9 +594,12 @@ export class FeishuService {
     }
     this.connection = channel.connectionState()
     this.emit()
+    if (this.connection === 'connected') this.startFleetTimer()
   }
 
   private async disposeChannel(): Promise<void> {
+    this.stopFleetTimer()
+    this.fleetStoreCache = null
     const channel = this.channel
     this.channel = null
     if (!channel) return
@@ -492,6 +627,8 @@ export class FeishuService {
         scan: this.scanTicket,
         eventCount: this.eventCount,
         provision: this.provision,
+        computerId: this.computer?.id ?? null,
+        computerName: this.computer?.name ?? null,
         error: this.error
       }
     }
@@ -518,6 +655,8 @@ export class FeishuService {
       scan: this.scanTicket,
       pairedUserCount: binding.pairedUsers.length,
       provision: this.provision,
+      computerId: this.computer?.id ?? null,
+      computerName: this.computer?.name ?? null,
       error: this.error
     }
   }
@@ -536,6 +675,99 @@ export class FeishuService {
     if (this.scanTimer) {
       clearTimeout(this.scanTimer)
       this.scanTimer = null
+    }
+  }
+
+  private startFleetTimer(): void {
+    if (this.fleetTimer) return
+    if (!this.computer || !this.history || !this.bitableStatePath || !this.onFleetCommand) return
+    if (!this.channel?.bitableClient) return
+    this.fleetTimer = setInterval(() => {
+      void this.fleetTick()
+    }, this.fleetTickMs)
+  }
+
+  private stopFleetTimer(): void {
+    if (!this.fleetTimer) return
+    clearInterval(this.fleetTimer)
+    this.fleetTimer = null
+  }
+
+  private async fleetStore(): Promise<FleetStore | null> {
+    if (this.fleetStoreCache) return this.fleetStoreCache
+    const binding = this.binding
+    const statePath = this.bitableStatePath
+    const client = this.channel?.bitableClient?.() ?? null
+    if (!binding || !statePath || !client) return null
+    const tables = await ensureFeishuFleetTables({
+      appId: binding.appId,
+      client,
+      statePath
+    })
+    if (!tables) return null
+    this.fleetStoreCache = new FleetStore(client, tables.appToken, {
+      sessions: tables.sessionTableId,
+      computers: tables.computerTableId,
+      commands: tables.commandTableId,
+      slots: tables.slotTableId
+    })
+    return this.fleetStoreCache
+  }
+
+  /**
+   * 一轮：心跳、领一条命令、没命令时再同步会话。
+   * 失败只记日志，等下一轮。不拉新进程，不开窗口。
+   */
+  private async fleetTick(): Promise<void> {
+    if (this.fleetTickRunning) return
+    if (this.connection !== 'connected') return
+    const computer = this.computer
+    const binding = this.binding
+    if (!computer || !binding) return
+    this.fleetTickRunning = true
+    try {
+      const store = await this.fleetStore()
+      if (!store) return
+      const now = Date.now()
+      if (now - this.lastHeartbeatAt >= 30_000) {
+        await store.upsertComputer(
+          { id: computer.id, name: this.computer?.name || computer.name },
+          now
+        )
+        this.lastHeartbeatAt = now
+      }
+      const command = await store.claimNext(computer.id, now)
+      if (command && this.onFleetCommand) {
+        try {
+          await this.onFleetCommand({
+            openId: command.openId,
+            action: command.action,
+            payload: command.payload
+          })
+          await store.finishCommand(command.id, 'done', 'ok')
+        } catch (error) {
+          await store.finishCommand(command.id, 'failed', message(error, '执行失败'))
+        }
+        return
+      }
+      const client = this.channel?.bitableClient?.() ?? null
+      if (this.history && this.bitableStatePath && client && now - this.lastSessionSyncAt >= 120_000) {
+        await syncFeishuSessionTable({
+          appId: binding.appId,
+          client,
+          statePath: this.bitableStatePath,
+          history: this.history,
+          computer: {
+            computerId: computer.id,
+            computerName: this.computer?.name || computer.name
+          }
+        })
+        this.lastSessionSyncAt = now
+      }
+    } catch (error) {
+      console.log('[feishu] 多电脑轮询：%s', message(error, '未知错误'))
+    } finally {
+      this.fleetTickRunning = false
     }
   }
 }

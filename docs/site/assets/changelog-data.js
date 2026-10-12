@@ -14,6 +14,16 @@
     /* ─────────────────────────── English ─────────────────────────── */
     en: [
       {
+        tag: '1.0.6',
+        date: '2026-10-12',
+        title: 'Several computers share one Feishu bot',
+        bullets: [
+          'Name this computer in Settings. Another computer joins with the same App ID and App Secret; do not scan again, or the scan creates a different bot. Paste the first computer\'s Bitable link to join the same base.',
+          'One chat covers every computer. /电脑 shows who is online, /列表 groups sessions by computer, and /继续 电脑名 序号 opens the session on the computer that has the files.',
+          'A session is not opened on a different computer. Without a multi-computer roster, /继续 序号 still opens on this machine, and /打开 and /dsh without a computer name keep their previous local behavior.'
+        ]
+      },
+      {
         tag: '1.0.5',
         date: '2026-10-12',
         title: 'WorkBuddy AI opens in place, and the crash loop stops',
@@ -83,6 +93,16 @@
 
     /* ─────────────────────────── 简体中文 ─────────────────────────── */
     zh: [
+      {
+        tag: '1.0.6',
+        date: '2026-10-12',
+        title: '多台电脑共用一个飞书机器人',
+        bullets: [
+          '设置里给这台电脑起名。另一台手动填同一套 App ID 和 App Secret，不要再扫码；再扫会变成另一个机器人。也可以把第一台的多维表格链接贴进设置，接上同一张表。',
+          '飞书里仍是一个对话。/电脑 看谁在线，/列表 按电脑列出，/继续 电脑名 序号 在拥有文件的那台打开。',
+          '会话不会在另一台电脑上打开。没有多电脑名单时，/继续 序号 仍在本机打开；/打开 和 /dsh 不带电脑名时，仍按原来的本机行为。'
+        ]
+      },
       {
         tag: '1.0.5',
         date: '2026-10-12',

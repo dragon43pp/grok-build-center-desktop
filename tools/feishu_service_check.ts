@@ -19,6 +19,7 @@
 import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { join } from 'node:path'
 import { FeishuService } from '../electron/feishu/service'
 import { FeishuStore, isFeishuAppId, maskAppId } from '../electron/feishu/store'
 import type { FeishuStatus } from '../shared/ipc-contract'
@@ -247,6 +248,58 @@ async function main(): Promise<void> {
   )
 
   await service.dispose()
+
+  section('多电脑轮询定时器')
+  const setIntervalOriginal = globalThis.setInterval
+  const clearIntervalOriginal = globalThis.clearInterval
+  const intervals: Array<ReturnType<typeof setInterval>> = []
+  let cleared = 0
+  globalThis.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+    const id = setIntervalOriginal(handler, timeout, ...args)
+    intervals.push(id)
+    return id
+  }) as typeof setInterval
+  globalThis.clearInterval = ((id: ReturnType<typeof setInterval>) => {
+    cleared += 1
+    return clearIntervalOriginal(id)
+  }) as typeof clearInterval
+  try {
+    const fleetService = new FeishuService({
+      store,
+      broadcast: () => undefined,
+      computerPath: join(root, 'feishu-computer.json'),
+      computerFallbackName: '家里',
+      fleetTickMs: 60_000,
+      history: async () => [],
+      bitableStatePath: join(root, 'feishu-bitable.json'),
+      onFleetCommand: async () => undefined,
+      channelFactory: () => ({
+        start: async () => ({ error: null }),
+        connectionState: () => 'connected' as const,
+        bitableClient: () => ({}) as never,
+        dispose: async () => undefined
+      })
+    })
+    const named = await fleetService.initialize()
+    check('电脑名字进了快照', named.computerName === '家里', String(named.computerName))
+    check('电脑 id 进了快照', typeof named.computerId === 'string' && named.computerId.length >= 16)
+    await fleetService.bindManual({
+      appId: FAKE_APP_ID,
+      appSecret: FAKE_APP_SECRET,
+      domain: 'feishu'
+    })
+    check(
+      '重连后只留一个轮询',
+      intervals.length === cleared + 1,
+      `${intervals.length} started, ${cleared} cleared`
+    )
+    await fleetService.dispose()
+    check('dispose 清掉轮询', intervals.length === cleared, `${intervals.length} started, ${cleared} cleared`)
+  } finally {
+    globalThis.setInterval = setIntervalOriginal
+    globalThis.clearInterval = clearIntervalOriginal
+  }
+
   rmSync(root, { recursive: true, force: true })
 
   console.log(`\n通过 ${pass} · 失败 ${fail}`)

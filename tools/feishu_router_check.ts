@@ -15,7 +15,7 @@
 
 import type { BridgeHistorySession, BridgeResumeResult, BridgeSessionInfo } from '../shared/bridge-protocol'
 import type { FeishuInboundCardAction, FeishuInboundMessage } from '../electron/feishu/channel'
-import { parseCommand, createFeishuRouter } from '../electron/feishu/router'
+import { parseCommand, createFeishuRouter, type FeishuFleetPort } from '../electron/feishu/router'
 import { planResume } from '../shared/session-resume'
 
 let pass = 0
@@ -37,7 +37,16 @@ function check(name: string, ok: boolean, extra = ''): void {
   check('/help', parseCommand('/help').cmd === 'help')
   check('/列表', parseCommand('/列表').cmd === 'list')
   check('/会话', parseCommand('/会话').cmd === 'active')
-  check('/继续 3', (() => { const c = parseCommand('/继续 3'); return c.cmd === 'resume' && c.n === 3 && !c.text })())
+  check('/继续 3', (() => { const c = parseCommand('/继续 3'); return c.cmd === 'resume' && c.n === 3 && !c.text && !c.computer })())
+  check('/继续 办公室 3', (() => {
+    const c = parseCommand('/继续 办公室 3')
+    return c.cmd === 'resume' && c.n === 3 && c.computer === '办公室' && !c.text
+  })())
+  check('/电脑', parseCommand('/电脑').cmd === 'computers')
+  check('/列表 办公室', (() => {
+    const c = parseCommand('/列表 办公室')
+    return c.cmd === 'list' && c.computer === '办公室'
+  })())
   check(
     '/继续 1 继续干活 → resume 带话',
     (() => {
@@ -108,6 +117,7 @@ interface Deps {
    * 入参是飞书侧传下来的 sessionId（省略 = 最近一场），判卷要验它被原样透传。
    */
   openDshSessionImpl?: (sessionId?: string) => Promise<{ ok: boolean; message: string }>
+  fleet?: FeishuFleetPort
 }
 
 function makeFixture(deps: Deps = {}) {
@@ -179,7 +189,8 @@ function makeFixture(deps: Deps = {}) {
             return deps.openDshSessionImpl!(sessionId)
           }
         }
-      : {})
+      : {}),
+    ...(deps.fleet ? { fleet: deps.fleet } : {})
   })
 
   const message = (overrides: Partial<FeishuInboundMessage> = {}): FeishuInboundMessage => ({
@@ -699,6 +710,56 @@ function makeCardActionFor(value: Record<string, unknown>, openId = 'ou_me'): Fe
   await guarded.router.onMessage(guarded.message({ text: '/dsh' }))
   check('非配对人 /dsh：一条不回', guarded.sent.length === 0, String(guarded.sent.length))
   check('非配对人 /dsh：不惊动打开器', guarded.calls.openDsh === 0, String(guarded.calls.openDsh))
+}
+
+{
+  const enqueued: Array<{ action: string; targetId: string; payload: Record<string, unknown> }> = []
+  const now = Date.now()
+  const self = { id: '11111111-2222-4333-8444-555555555555', name: '家里' }
+  const office = { id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', name: '办公室', seenAt: now }
+  const fleet: FeishuFleetPort = {
+    self: () => self,
+    computers: async () => [office, { ...self, seenAt: now }],
+    enqueue: async (command) => {
+      enqueued.push({ action: command.action, targetId: command.targetId, payload: command.payload })
+      return 'created'
+    },
+    publishSlots: async () => undefined,
+    readSlots: async () => [
+      {
+        n: 1,
+        computerId: office.id,
+        computerName: office.name,
+        sid: 'ses-office',
+        agent: 'grok',
+        title: '办公室那场'
+      }
+    ],
+    remoteSessions: async () => [{ sid: 'ses-office', agent: 'grok', title: '办公室那场' }]
+  }
+  const handed = makeFixture({ fleet })
+  await handed.router.onMessage(handed.message({ text: '/继续 1', messageId: 'om-handoff' }))
+  check('点到别的电脑：不在本机 resume', handed.calls.resume === 0, String(handed.calls.resume))
+  check('点到别的电脑：写入一条 resume 命令', enqueued.length === 1 && enqueued[0]?.action === 'resume' && enqueued[0]?.targetId === office.id)
+  check('点到别的电脑：命令带上会话 id', enqueued[0]?.payload['sid'] === 'ses-office')
+  check('点到别的电脑：回复已交给', handed.lastText().includes('已交给') && handed.lastText().includes('办公室'), handed.lastText())
+
+  enqueued.length = 0
+  const offline = makeFixture({
+    fleet: {
+      ...fleet,
+      computers: async () => [{ ...office, seenAt: now - 10 * 60 * 1000 }]
+    }
+  })
+  await offline.router.onMessage(offline.message({ text: '/继续 办公室 3', messageId: 'om-offline' }))
+  check('点名不在线：不在本机 resume', offline.calls.resume === 0, String(offline.calls.resume))
+  check('点名不在线：不写命令', enqueued.length === 0, String(enqueued.length))
+  check('点名不在线：说明不在线', offline.lastText().includes('不在线'), offline.lastText())
+
+  const local = makeFixture()
+  await local.router.onMessage(local.message({ text: '/继续 办公室 3' }))
+  check('没接多电脑时点名：不在本机 resume', local.calls.resume === 0, String(local.calls.resume))
+  check('没接多电脑时点名：说明名单没接上', local.lastText().includes('多电脑名单'), local.lastText())
 }
 
 console.log(`\n通过 ${pass} · 失败 ${fail}`)

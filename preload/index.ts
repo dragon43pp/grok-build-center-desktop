@@ -466,6 +466,8 @@ const feishuApi: FeishuApi = {
   unbind: () => ipcRenderer.invoke(FeishuInvokeChannel.Unbind),
   reconnect: () => ipcRenderer.invoke(FeishuInvokeChannel.Reconnect),
   unpairUser: (openId) => ipcRenderer.invoke(FeishuInvokeChannel.UnpairUser, openId),
+  renameComputer: (name) => ipcRenderer.invoke(FeishuInvokeChannel.RenameComputer, name),
+  adoptBitable: (urlOrToken) => ipcRenderer.invoke(FeishuInvokeChannel.AdoptBitable, urlOrToken),
   onStatusChange: (cb) => {
     const handler = (_event: IpcRendererEvent, status: FeishuStatus): void => {
       // 主进程是唯一的状态源，但跨进程边界过来的东西仍然过一遍形状检查 ——

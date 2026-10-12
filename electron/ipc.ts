@@ -1112,6 +1112,16 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
     }
     return ctx.feishu.unpairUser(openId)
   })
+  ipcMain.handle(FeishuInvokeChannel.RenameComputer, (event, name: unknown) => {
+    requireMainWindow(event, ctx)
+    if (typeof name !== 'string' || name.length > 64) return ctx.feishu.getStatus()
+    return ctx.feishu.renameComputer(name)
+  })
+  ipcMain.handle(FeishuInvokeChannel.AdoptBitable, (event, raw: unknown) => {
+    requireMainWindow(event, ctx)
+    if (typeof raw !== 'string' || raw.length > 2000) return ctx.feishu.getStatus()
+    return ctx.feishu.adoptBitable(raw)
+  })
 
   ipcMain.handle('diag:log', (_e, line: string) => {
     if (typeof line !== 'string' || !line) return

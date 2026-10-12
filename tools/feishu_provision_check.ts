@@ -7,7 +7,7 @@
  *   1. 幂等：第二轮同步必须一个新行都不插（账本里 hash 没变就跳过）；
  *   2. 状态文件被删后必须先重建索引，不能把已有行全部重插一遍；
  *   3. `99991672`（应用缺权限）必须折成「点一下就到」的授权链接 + 补救卡；
- *   4. 引导卡必须诚实：没实现的指令写「下一版」，不许骗用户。
+ *   4. 引导卡必须诚实：已经能用的指令写出来，不许再把它们推到「下一版」。
  *
  * 跑法：
  *   node_modules/.bin/esbuild tools/feishu_provision_check.ts --bundle \
@@ -343,11 +343,10 @@ const sessionsA = [
     const actions = card.elements?.flatMap((el) => el.actions ?? []) ?? []
     return actions.some((action) => action.url === fake.url)
   })())
-  check('卡片诚实：写了「下一版」', JSON.stringify(card).includes('下一版'))
-  check(
-    '卡片没有撒谎（没承诺发指令）',
-    !JSON.stringify(card).includes('发「列表」')
-  )
+  check('引导卡写了现在能用的 /列表', JSON.stringify(card).includes('/列表'))
+  check('引导卡写了 /继续', JSON.stringify(card).includes('/继续'))
+  check('引导卡说明共用一个机器人', JSON.stringify(card).includes('一个机器人'))
+  check('引导卡不再把已实现的指令推到下一版', !JSON.stringify(card).includes('下一版'))
 
   // --- 状态文件落盘
   check('账本已落盘', existsSync(statePath))
@@ -579,6 +578,37 @@ check('cliOptionOf 大小写不敏感', cliOptionOf('CODEX') === 'Codex')
     ranAt: 0
   })
   check('总结：缺权限指向授权', perm.includes('授权'))
+}
+
+// --- 14. 带电脑范围：只删本机缺席行
+{
+  const fake = new FakeBitable()
+  const bootstrap = new BitableSync(fake, { records: {} })
+  const tableId = await bootstrap.ensureTable(fake.appToken)
+  const otherRid = fake.seedRecord({ 会话ID: 'ses-x', 电脑ID: 'other-id' })
+  const legacyRid = fake.seedRecord({ 会话ID: 'ses-legacy' })
+  const ownRid = fake.seedRecord({ 会话ID: 'ses-gone', 电脑ID: 'self-id' })
+  const sync = new BitableSync(fake, {
+    records: {
+      'other-id|Grok Build|ses-x': { rid: otherRid, hash: 'keep' },
+      'Grok Build|ses-legacy': { rid: legacyRid, hash: 'keep' },
+      'self-id|Grok Build|ses-gone': { rid: ownRid, hash: 'old' }
+    }
+  })
+  const table = fake.tables.get(tableId)!
+  await sync.sync(
+    fake.appToken,
+    tableId,
+    [makeSession({ sessionId: 'ses-1', agent: 'grok', title: '家里这场' })],
+    false,
+    { computerId: 'self-id', computerName: '家里' }
+  )
+  check('带电脑范围：别的电脑的行还在', table.rows.has(otherRid))
+  check('带电脑范围：没有电脑ID的旧行还在', table.rows.has(legacyRid))
+  check('带电脑范围：本机缺席行被删', !table.rows.has(ownRid))
+  const ownRow = [...table.rows.values()].find((row) => row.fields['会话ID'] === 'ses-1')
+  check('带电脑范围：新行写了电脑ID', ownRow?.fields['电脑ID'] === 'self-id', JSON.stringify(ownRow?.fields))
+  check('带电脑范围：新行写了电脑名', ownRow?.fields['电脑'] === '家里')
 }
 
 try {

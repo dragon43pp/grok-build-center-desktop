@@ -594,7 +594,14 @@ export const en = {
     remoteQr: 'Join QR code',
     remoteQrHint: 'Scan here if the website is already closed',
     feishuHint:
-      'Reach this machine\u2019s sessions from Feishu: send a line to keep one going, tap to approve when it is waiting on you.',
+      'Several computers share one Feishu bot. Name the computer in chat; the session continues on the computer that has the files.',
+    feishuJoinHint:
+      'To add another computer, enter the same App ID and App Secret by hand. Do not scan again — a new scan creates a different bot.',
+    feishuComputerLabel: 'This computer\u2019s name',
+    feishuComputerSave: 'Save name',
+    feishuAdoptLabel: 'Shared Bitable',
+    feishuAdoptPlaceholder: 'Paste the first computer\u2019s Bitable link',
+    feishuAdopt: 'Use this base',
     feishuScan: 'Connect Feishu by QR',
     feishuScanAgain: 'Generate a new QR code',
     feishuScanWaiting: 'Waiting for Feishu confirmation…',
