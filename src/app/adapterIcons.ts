@@ -63,7 +63,8 @@ const adapterIcons: Record<string, BrandIcon> = {
   auggie: Sparkles,
   continue: LobeHub,
   // WorkBuddy 的 GUI 会话（只读历史，没有恢复入口）——没有品牌图标，用对话气泡。
-  workbuddy: MessagesSquare
+  workbuddy: MessagesSquare,
+  'workbuddy-ai': MessagesSquare
 }
 
 export function getAdapterIcon(adapterId: string): BrandIcon {
@@ -102,7 +103,8 @@ const adapterNames: Record<string, string> = {
   'trae-agent': 'Trae Agent',
   aider: 'Aider',
   continue: 'Continue',
-  workbuddy: 'WorkBuddy'
+  workbuddy: 'WorkBuddy',
+  'workbuddy-ai': 'WorkBuddy AI'
 }
 
 export function getAdapterName(adapterId: string): string {

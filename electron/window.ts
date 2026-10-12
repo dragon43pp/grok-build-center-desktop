@@ -7,6 +7,7 @@ import {
 import { DEFAULT_BACKGROUND_COLOR, type MainPrefs } from './main-prefs'
 import { isQuitting } from './quitting'
 import { applyCenterWindowIcon, createCenterAppIcon } from './app-icons'
+import { safeSend } from './safe-send'
 
 /** 窗口位置换算成"相对当前显示器"坐标（多显示器下渐变坐标系跟随窗口所在屏）。 */
 export function displayRelativePosition(
@@ -74,22 +75,18 @@ export function createWindow(prefs: MainPrefs): BrowserWindow {
     win.show()
   })
   const sendMaximizedState = (): void => {
-    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
-      win.webContents.send(
-        WindowEventChannel.MaximizedChanged,
-        win.isMaximized()
-      )
-    }
+    if (win.isDestroyed()) return
+    safeSend(win.webContents, WindowEventChannel.MaximizedChanged, win.isMaximized())
   }
   win.on('maximize', sendMaximizedState)
   win.on('unmaximize', sendMaximizedState)
   const sendFullScreenState = (): void => {
-    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
-      win.webContents.send(
-        WindowEventChannel.FullScreenChanged,
-        win.isFullScreen()
-      )
-    }
+    if (win.isDestroyed()) return
+    safeSend(
+      win.webContents,
+      WindowEventChannel.FullScreenChanged,
+      win.isFullScreen()
+    )
   }
   win.on('enter-full-screen', sendFullScreenState)
   win.on('leave-full-screen', sendFullScreenState)
@@ -100,8 +97,9 @@ export function createWindow(prefs: MainPrefs): BrowserWindow {
     if (moveTimer) return
     moveTimer = setTimeout(() => {
       moveTimer = null
-      if (win.isDestroyed() || win.webContents.isDestroyed()) return
-      win.webContents.send(
+      if (win.isDestroyed()) return
+      safeSend(
+        win.webContents,
         WindowEventChannel.PositionChanged,
         displayRelativePosition(win)
       )
@@ -119,13 +117,19 @@ export function createWindow(prefs: MainPrefs): BrowserWindow {
   })
 
   // electron-vite dev 时注入 dev server URL；生产 loadFile 构建产物。
+  void loadMainRenderer(win)
   if (process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
-    // dev：自动打开 DevTools。用独立窗口(detach)，避免挤占终端高度污染 fit() 的 rows 计算
+    // dev：自动打开 DevTools。用独立窗口(detach)，避免挤占终端高度污染 fit() 的 rows 计算。
+    // 崩溃恢复会再次 loadMainRenderer，不再打开第二扇 DevTools。
     win.webContents.openDevTools({ mode: 'detach' })
-  } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   return win
+}
+
+/** 主窗口页面入口。创建和崩溃恢复共用，避免两条加载路径分叉。 */
+export function loadMainRenderer(win: BrowserWindow): Promise<void> {
+  const devUrl = process.env['ELECTRON_RENDERER_URL']
+  if (devUrl) return win.loadURL(devUrl)
+  return win.loadFile(join(__dirname, '../renderer/index.html'))
 }

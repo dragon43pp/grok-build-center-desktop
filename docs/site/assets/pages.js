@@ -151,11 +151,11 @@
     /* ── download.html ── */
     'pdl.doc.title': 'Download — Agent Session Center',
     'pdl.doc.description':
-      'Download Agent Session Center 1.0.4 for Windows and macOS. Each file with its size and SHA-256, and how to verify it before you run it.',
+      'Download Agent Session Center 1.0.5 for Windows and macOS. Each file with its size and SHA-256, and how to verify it before you run it.',
     'pdl.h1': 'Download',
     'pdl.lede':
       'Every build is self-contained and unsigned. Pick the file for your system, check its hash against the sidecar served next to it, and run it. If you are unsure which one you need, the notes under each file say exactly what it is.',
-    'pdl.version.line': 'Version 1.0.4 — released 2026-10-11',
+    'pdl.version.line': 'Version 1.0.5 — released 2026-10-12',
     'pdl.os1.label': 'Windows 10 / 11 — x64',
     'pdl.os1.note':
       'Guided NSIS installer. Installs per-user by default; choose Install for all users on its first page to use Program Files instead. Unsigned, so SmartScreen prompts once.',
@@ -181,7 +181,7 @@
     /* ── changelog.html ── */
     'pc.doc.title': 'Changelog — Agent Session Center',
     'pc.doc.description':
-      'Release notes for Agent Session Center, newest first: what changed in versions 1.0.0 through 1.0.4.',
+      'Release notes for Agent Session Center, newest first: what changed in versions 1.0.0 through 1.0.5.',
     'pc.h1': 'Changelog',
     'pc.lede':
       'Every public release from 1.0.0 on, newest first. The same list is kept in the CHANGELOG.md of the repository, which also carries the pre-1.0 history.',
@@ -342,11 +342,11 @@
     /* ── download.html ── */
     'pdl.doc.title': 'Agent Session Center —— 下载',
     'pdl.doc.description':
-      '下载 Agent Session Center 1.0.4，支持 Windows 和 macOS。每个文件都带大小和 SHA-256，以及运行前的校验方法。',
+      '下载 Agent Session Center 1.0.5，支持 Windows 和 macOS。每个文件都带大小和 SHA-256，以及运行前的校验方法。',
     'pdl.h1': '下载',
     'pdl.lede':
       '每个构建都自包含、且未签名。按你的系统挑一个文件，先用旁边那份 .sha256 校验文件核对哈希，再运行。不确定该下哪个，就看每个文件下面的说明。',
-    'pdl.version.line': '版本 1.0.4 —— 发布于 2026-10-11',
+    'pdl.version.line': '版本 1.0.5 —— 发布于 2026-10-12',
     'pdl.os1.label': 'Windows 10 / 11 —— x64',
     'pdl.os1.note':
       '引导式 NSIS 安装包。默认按用户安装；想在 Program Files 里装，就在向导第一页选「为所有用户安装」。未签名，SmartScreen 会提示一次。',
@@ -372,7 +372,7 @@
     /* ── changelog.html ── */
     'pc.doc.title': 'Agent Session Center —— 更新日志',
     'pc.doc.description':
-      'Agent Session Center 的版本说明，最新在前：1.0.0 到 1.0.4 分别改了什么。',
+      'Agent Session Center 的版本说明，最新在前：1.0.0 到 1.0.5 分别改了什么。',
     'pc.h1': '更新日志',
     'pc.lede':
       '从 1.0.0 起的每一次公开发布，最新在前。同一份列表也维护在仓库的 CHANGELOG.md 里，那里还包含 1.0 之前的历史。',

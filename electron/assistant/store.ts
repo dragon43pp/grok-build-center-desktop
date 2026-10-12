@@ -15,16 +15,22 @@ interface StoredConfig extends AssistantConfigInput {
   version: 1
 }
 
-export interface AssistantConfig extends AssistantConfigInput {
-  /** 渲染进程不可见；主进程发请求时用。 */
+export interface AssistantConfig {
+  baseURL: string
   apiKey: string
+  model: string
+  enabled: boolean
+  digestEnabled: boolean
+  messageSearchEnabled: boolean
 }
 
 const DEFAULTS: AssistantConfig = {
   baseURL: '',
   apiKey: '',
   model: '',
-  enabled: false
+  enabled: false,
+  digestEnabled: false,
+  messageSearchEnabled: false
 }
 
 function filePath(userDataDir: string): string {
@@ -50,7 +56,9 @@ export function loadAssistantConfig(userDataDir: string): AssistantConfig {
       baseURL: parsed.baseURL.trim(),
       apiKey: parsed.apiKey,
       model: parsed.model.trim(),
-      enabled: parsed.enabled
+      enabled: parsed.enabled,
+      digestEnabled: parsed.digestEnabled === true,
+      messageSearchEnabled: parsed.messageSearchEnabled === true
     }
   } catch {
     return { ...DEFAULTS }
@@ -68,7 +76,13 @@ export function saveAssistantConfig(
     baseURL: update.baseURL.trim().replace(/\/+$/, ''),
     apiKey,
     model: update.model.trim(),
-    enabled: update.enabled
+    enabled: update.enabled,
+    digestEnabled:
+      typeof update.digestEnabled === 'boolean' ? update.digestEnabled : current.digestEnabled,
+    messageSearchEnabled:
+      typeof update.messageSearchEnabled === 'boolean'
+        ? update.messageSearchEnabled
+        : current.messageSearchEnabled
   }
   const stored: StoredConfig = { ...next, version: 1 }
   writeFileSync(filePath(userDataDir), JSON.stringify(stored, null, 2), 'utf8')
@@ -83,9 +97,16 @@ export function describeConfig(config: AssistantConfig): AssistantConfigStatus {
     baseURL: config.baseURL,
     model: config.model,
     enabled: config.enabled,
+    digestEnabled: config.digestEnabled,
+    messageSearchEnabled: config.messageSearchEnabled,
     hasApiKey: config.apiKey !== '',
     apiKeyMasked: masked
   }
+}
+
+/** 端点三项齐全即可写概要。不要求「启用 AI 查找」同时打开。 */
+export function hasEndpoint(config: AssistantConfig): boolean {
+  return config.baseURL !== '' && config.apiKey !== '' && config.model !== ''
 }
 
 export function isConfigured(config: AssistantConfig): boolean {

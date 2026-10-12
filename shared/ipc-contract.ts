@@ -324,9 +324,10 @@ export const SessionsInvokeChannel = {
    */
   TrashSession: 'sessions:trash-session',
   /**
-   * 在国内 WorkBuddy 里打开一场会话（`workbuddy://chat/<id>`）。
-   * 省略 id 打开最近一场；给出 id 时必须仍在国内库的未删除记录里。
-   * 不开国际版，也不走 CLI 的 planResume。
+   * 在 WorkBuddy 或 WorkBuddy AI 里打开一场会话。
+   * 国内是 `workbuddy://chat/<id>`，国际版是 `workbuddy-ai://chat/<id>`。
+   * 省略 id 打开该产品库里最近一场；给出 id 时必须仍在未删除记录里。
+   * 这是跳进客户端对应对话，不走 CLI 的 planResume。
    */
   OpenWorkbuddy: 'sessions:open-workbuddy'
 } as const
@@ -343,8 +344,10 @@ export interface SessionsTrashResult {
 }
 
 export interface SessionsOpenWorkbuddyRequest {
-  /** 省略则打开国内库里最近一场。给出则必须是未删除的国内会话。 */
+  /** 省略则打开该产品库里最近一场。给出则必须是未删除记录。 */
   id?: string
+  /** 省略 = 国内 WorkBuddy。 */
+  product?: 'workbuddy' | 'workbuddy-ai'
 }
 
 export interface SessionsOpenWorkbuddyResult {
@@ -372,7 +375,7 @@ export interface SessionsApi {
   refreshPricing: () => Promise<PricingRefreshResult>
   /** 把一场会话移入系统回收站。主进程核对后才执行，见 TrashSession 注释。 */
   trash: (request: SessionsTrashRequest) => Promise<SessionsTrashResult>
-  /** 在国内 WorkBuddy 里打开最近一场，或打开一条仍存在的国内会话。 */
+  /** 在 WorkBuddy 或 WorkBuddy AI 里打开一场仍存在的会话。 */
   openWorkbuddy: (
     request?: SessionsOpenWorkbuddyRequest
   ) => Promise<SessionsOpenWorkbuddyResult>

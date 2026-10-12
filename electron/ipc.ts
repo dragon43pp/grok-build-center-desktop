@@ -9,6 +9,7 @@ import {
 } from 'electron'
 import { join } from 'node:path'
 import { PTYManager } from './pty/PTYManager'
+import { sendToEachWindow } from './safe-send'
 import {
   AppInvokeChannel,
   AppEventChannel,
@@ -40,7 +41,7 @@ import {
   type SessionsDiscoverRequest,
   type SpawnOptions
 } from '../shared/ipc-contract'
-import { openDomesticWorkbuddy } from './sessions/open-workbuddy'
+import { openDomesticWorkbuddy, openWorkbuddySession } from './sessions/open-workbuddy'
 import { AgentInvokeChannel } from '../shared/agent-events'
 import type { StartAgentSession } from '../shared/agent-events'
 import type { AgentSessionRuntime } from './agents/AgentSessionRuntime'
@@ -62,6 +63,17 @@ import {
   saveAssistantConfig
 } from './assistant/store'
 import { assistantPing, assistantSearch } from './assistant/search'
+import { kickDigest } from './assistant/digest-scheduler'
+import {
+  collectMessageSearch,
+  matchIndexed,
+  currentBriefs,
+  currentDigestStatus,
+  currentMessageCard,
+  isSessionKey,
+  readSessionDetail,
+  runDigestPass
+} from './assistant/messages'
 import { persistMainPrefs, sanitizeFloatingAppearance } from './main-prefs'
 import {
   BUILTIN_FLOATING_RENDERER_ID,
@@ -199,6 +211,42 @@ function senderWindow(event: IpcMainInvokeEvent): BrowserWindow | null {
 function requireMainWindow(event: IpcMainInvokeEvent, ctx: IpcContext): void {
   if (senderWindow(event) !== ctx.getWindow()) {
     throw new Error('This API is unavailable for this window')
+  }
+}
+
+function parseMessageCardRequest(raw: unknown): {
+  key: string
+  session: {
+    agent: AgentId
+    id: string
+    path: string
+    title: string
+    cwd: string
+    updatedAt: string | null
+  } | null
+} | null {
+  if (typeof raw === 'string') {
+    return isSessionKey(raw) ? { key: raw, session: null } : null
+  }
+  if (!raw || typeof raw !== 'object') return null
+  const record = raw as Record<string, unknown>
+  const key = typeof record['key'] === 'string' ? record['key'] : ''
+  if (!isSessionKey(key)) return null
+  const agent = typeof record['agent'] === 'string' ? record['agent'] : ''
+  const id = typeof record['id'] === 'string' ? record['id'] : ''
+  const path = typeof record['path'] === 'string' ? record['path'] : ''
+  if (!agent || !id || !path || `${agent}:${id}` !== key) return { key, session: null }
+  if (!AGENT_IDS.includes(agent as AgentId)) return { key, session: null }
+  return {
+    key,
+    session: {
+      agent: agent as AgentId,
+      id,
+      path,
+      title: typeof record['title'] === 'string' ? record['title'] : '',
+      cwd: typeof record['cwd'] === 'string' ? record['cwd'] : '',
+      updatedAt: typeof record['updatedAt'] === 'string' ? record['updatedAt'] : null
+    }
   }
 }
 
@@ -800,8 +848,8 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
   )
 
   /**
-   * 打开国内 WorkBuddy 最近一场（或指定的一场）。只对主窗口开放。
-   * 真正的协议拉起在 openDomesticWorkbuddy，这里只校验入参形状。
+   * 打开 WorkBuddy / WorkBuddy AI 里的一场对话。只对主窗口开放。
+   * 协议拉起在 openWorkbuddySession，这里只校验入参形状。
    */
   ipcMain.handle(
     SessionsInvokeChannel.OpenWorkbuddy,
@@ -817,6 +865,8 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
       if (raw !== undefined && typeof raw !== 'string') {
         return { ok: false, message: '会话 id 不合法。' }
       }
+      const product = (payload as { product?: unknown }).product
+      if (product === 'workbuddy-ai') return openWorkbuddySession('workbuddy-ai', raw)
       return openDomesticWorkbuddy(raw)
     }
   )
@@ -841,9 +891,14 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
       baseURL: typeof input['baseURL'] === 'string' ? input['baseURL'] : '',
       apiKey: typeof input['apiKey'] === 'string' ? input['apiKey'] : '',
       model: typeof input['model'] === 'string' ? input['model'] : '',
-      enabled: input['enabled'] === true
+      enabled: input['enabled'] === true,
+      digestEnabled: typeof input['digestEnabled'] === 'boolean' ? input['digestEnabled'] : undefined,
+      messageSearchEnabled:
+        typeof input['messageSearchEnabled'] === 'boolean' ? input['messageSearchEnabled'] : undefined
     }
-    return describeConfig(saveAssistantConfig(app.getPath('userData'), clean))
+    const saved = saveAssistantConfig(app.getPath('userData'), clean)
+    if (saved.digestEnabled) kickDigest(app.getPath('userData'))
+    return describeConfig(saved)
   })
 
   ipcMain.handle(AssistantInvokeChannel.TestConfig, (event) => {
@@ -859,14 +914,59 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
         request && typeof request === 'object' && typeof (request as AssistantSearchRequest).query === 'string'
           ? (request as AssistantSearchRequest)
           : { query: '' }
+      const userData = app.getPath('userData')
+      const config = loadAssistantConfig(userData)
       const result = await discoverSessions()
-      return assistantSearch(
-        loadAssistantConfig(app.getPath('userData')),
-        result.sessions,
-        query
-      )
+      const pack = config.messageSearchEnabled
+        ? await collectMessageSearch(userData, result.sessions, query.query)
+        : undefined
+      return assistantSearch(config, result.sessions, query, pack)
     }
   )
+
+  ipcMain.handle(AssistantInvokeChannel.DigestStatus, (event) => {
+    requireMainWindow(event, ctx)
+    return currentDigestStatus(app.getPath('userData'))
+  })
+
+  ipcMain.handle(AssistantInvokeChannel.RunDigest, (event) => {
+    requireMainWindow(event, ctx)
+    return runDigestPass(app.getPath('userData'))
+  })
+
+  ipcMain.handle(AssistantInvokeChannel.MatchMessages, async (event, request: unknown) => {
+    requireMainWindow(event, ctx)
+    const started = Date.now()
+    const config = loadAssistantConfig(app.getPath('userData'))
+    const query =
+      request && typeof request === 'object' && typeof (request as { query?: unknown }).query === 'string'
+        ? (request as { query: string }).query
+        : ''
+    if (!config.messageSearchEnabled || query.trim().length < 2) {
+      return { enabled: config.messageSearchEnabled, sessionKeys: [], tookMs: Date.now() - started }
+    }
+    return {
+      enabled: true,
+      sessionKeys: matchIndexed(app.getPath('userData'), query),
+      tookMs: Date.now() - started
+    }
+  })
+
+  ipcMain.handle(AssistantInvokeChannel.MessageCard, async (event, request: unknown) => {
+    requireMainWindow(event, ctx)
+    const parsed = parseMessageCardRequest(request)
+    if (!parsed) return null
+    const userData = app.getPath('userData')
+    if (parsed.session) {
+      return readSessionDetail(userData, parsed.session)
+    }
+    return currentMessageCard(userData, parsed.key)
+  })
+
+  ipcMain.handle(AssistantInvokeChannel.ListBriefs, (event) => {
+    requireMainWindow(event, ctx)
+    return currentBriefs(app.getPath('userData'))
+  })
 
   ipcMain.handle(AppInvokeChannel.SetMainPrefs, (_event, update: unknown) =>
     applyMainPrefsUpdate(ctx, update)
@@ -1121,14 +1221,10 @@ async function applyMainPrefsUpdate(
     ctx.rebuildTrayMenu()
   }
   if (patch.uiThemeId !== undefined || patch.language !== undefined) {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.webContents.isDestroyed()) {
-        window.webContents.send(AppEventChannel.MainPrefsChanged, {
-          uiThemeId: merged.uiThemeId,
-          language: merged.language
-        })
-      }
-    }
+    sendToEachWindow(AppEventChannel.MainPrefsChanged, {
+      uiThemeId: merged.uiThemeId,
+      language: merged.language
+    })
   }
 }
 

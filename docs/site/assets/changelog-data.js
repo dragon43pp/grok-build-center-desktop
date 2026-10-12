@@ -14,6 +14,16 @@
     /* ─────────────────────────── English ─────────────────────────── */
     en: [
       {
+        tag: '1.0.5',
+        date: '2026-10-12',
+        title: 'WorkBuddy AI opens in place, and the crash loop stops',
+        bullets: [
+          'WorkBuddy AI sessions are listed from ~/.workbuddy-ai and opened with workbuddy-ai://chat/<id>. Domestic WorkBuddy uses workbuddy://chat/<id>. Every listed session can be opened. The jump lands in the client conversation.',
+          'AI search gains two independent switches, both off until you turn them on: a scheduled local read that writes detailed summaries, and search that matches titles together with message text. Indexes stay in ASC userData.',
+          'A send to a disposed render frame no longer floods the diagnostic log. The main window reloads at most three times in 60 seconds, closes the terminals from that page first, and stops with a dialog if it keeps crashing.'
+        ]
+      },
+      {
         tag: '1.0.4',
         date: '2026-10-11',
         title: 'A smaller installer, and Chinese-first docs',
@@ -73,6 +83,16 @@
 
     /* ─────────────────────────── 简体中文 ─────────────────────────── */
     zh: [
+      {
+        tag: '1.0.5',
+        date: '2026-10-12',
+        title: 'WorkBuddy AI 能打开对应对话，崩溃不再打成循环',
+        bullets: [
+          'WorkBuddy AI 的会话从 ~/.workbuddy-ai 读入列表，打开时走 workbuddy-ai://chat/<id>。国内 WorkBuddy 走 workbuddy://chat/<id>。历史里列出的每一场都能开，跳进客户端里的那一场。',
+          'AI 查找增加两个各自独立的开关，默认都关：定期读本机消息并写详细概要，以及同时搜索标题和消息正文。索引留在 ASC 自己的 userData 里。',
+          '发往已销毁渲染帧的消息不再灌爆诊断日志。主窗口 60 秒内最多重载 3 次，重载前先结束这一页带起来的终端；还在崩就停，并弹出指向诊断日志的说明。'
+        ]
+      },
       {
         tag: '1.0.4',
         date: '2026-10-11',

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   CopyX,
@@ -26,6 +26,7 @@ import {
 } from '../../shared/session-history'
 import { planResume } from '../../shared/session-resume'
 import type { LaunchableCli } from '../../shared/ipc-contract'
+import type { AssistantBrief, AssistantMessageCard } from '../../shared/assistant'
 
 interface SessionHistoryPageProps {
   /** 启动扫描的结果，用来把会话的 agent 映射到具体的 CLI 安装。 */
@@ -85,6 +86,13 @@ export default function SessionHistoryPage({
   // ── 回收站 ────────────────────────────────────────────────────
   const [trashingKey, setTrashingKey] = useState<string | null>(null)
   const [trashMessage, setTrashMessage] = useState<string | null>(null)
+  const [messageSearchOn, setMessageSearchOn] = useState(false)
+  const [messageHits, setMessageHits] = useState<Set<string> | null>(null)
+  const [messageBusy, setMessageBusy] = useState(false)
+  const [briefs, setBriefs] = useState<Map<string, AssistantBrief>>(new Map())
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [messageCard, setMessageCard] = useState<AssistantMessageCard | null>(null)
+  const [cardLoading, setCardLoading] = useState(false)
 
   const hiddenKeys = useSessionOpsStore((state) => state.hiddenKeys)
   const hideKeys = useSessionOpsStore((state) => state.hide)
@@ -92,18 +100,55 @@ export default function SessionHistoryPage({
 
   const sessions = useMemo(() => result?.sessions ?? [], [result])
 
-  /** 全部国内 WorkBuddy 里最近的一场。筛选和隐藏不会把更旧的一场顶上来。 */
-  const latestWorkbuddyId = useMemo(() => {
-    const latest = sortSessions(sessions).find(
-      (session) => session.agent === 'workbuddy' && !session.subagent && !session.archived
-    )
-    return latest?.id ?? null
-  }, [sessions])
+  useEffect(() => {
+    let alive = true
+    void window.assistantApi.getConfig().then((config) => {
+      if (alive) setMessageSearchOn(config.messageSearchEnabled)
+    })
+    void window.assistantApi.listBriefs().then((rows) => {
+      if (!alive) return
+      setBriefs(new Map(rows.map((row) => [row.key, row])))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!messageSearchOn) {
+      setMessageHits(null)
+      setMessageBusy(false)
+      return
+    }
+    const needle = query.trim()
+    if (needle.length < 2) {
+      setMessageHits(null)
+      setMessageBusy(false)
+      return
+    }
+    let alive = true
+    setMessageBusy(true)
+    const timer = window.setTimeout(() => {
+      void window.assistantApi
+        .matchMessages({ query: needle })
+        .then((result) => {
+          if (!alive) return
+          setMessageHits(result.enabled ? new Set(result.sessionKeys) : null)
+        })
+        .finally(() => {
+          if (alive) setMessageBusy(false)
+        })
+    }, 350)
+    return () => {
+      alive = false
+      window.clearTimeout(timer)
+    }
+  }, [messageSearchOn, query])
 
   /**
    * 会话 → 能不能恢复、为什么不能。
    * CLI 看 planResume、安装扫描和有没有安装项。
-   * WorkBuddy 不走这条：只有最近一场国内会话能在客户端里打开。
+   * WorkBuddy / WorkBuddy AI 不走这条：恢复是跳进客户端里的对应对话。
    * dsh 也不走这条：它没有终端恢复命令，恢复 = 在 ASC 的 DSH 界面里打开这一场。
    * 理由要拼成人话塞进 title，否则用户只能看到一个不明所以的灰按钮。
    */
@@ -114,17 +159,9 @@ export default function SessionHistoryPage({
       workbuddy: boolean
       dsh: boolean
     } => {
-      // WorkBuddy 不走 CLI。只有最近一场能在客户端里打开。
-      if (session.agent === 'workbuddy') {
-        if (session.id === latestWorkbuddyId) {
-          return { option: null, blocked: null, workbuddy: true, dsh: false }
-        }
-        return {
-          option: null,
-          blocked: t.openWorkbuddyNotLatest,
-          workbuddy: false,
-          dsh: false
-        }
+      // WorkBuddy 不走 CLI。每场都用深链跳进客户端里的对应对话。
+      if (session.agent === 'workbuddy' || session.agent === 'workbuddy-ai') {
+        return { option: null, blocked: null, workbuddy: true, dsh: false }
       }
       // dsh：没有终端恢复命令，但每一场都能在 ASC 的 DSH 界面里打开
       // （官方 sessions 服务按 id 认场次）。子会话除外——它不是用户开的，
@@ -156,7 +193,7 @@ export default function SessionHistoryPage({
       }
       return { option, blocked: null, workbuddy: false, dsh: false }
     },
-    [clis, latestWorkbuddyId, t]
+    [clis, t]
   )
 
   const handleResume = useCallback(
@@ -174,11 +211,13 @@ export default function SessionHistoryPage({
 
   const handleOpenWorkbuddy = useCallback(
     (session: HistorySession): void => {
-      if (session.id !== latestWorkbuddyId) return
       setResumingId(session.id)
       setResumeError(null)
       void window.sessionsApi
-        .openWorkbuddy({ id: session.id })
+        .openWorkbuddy({
+          id: session.id,
+          product: session.agent === 'workbuddy-ai' ? 'workbuddy-ai' : 'workbuddy'
+        })
         .then((result) => {
           if (!result.ok) setResumeError(t.openWorkbuddyFailed(result.message))
         })
@@ -188,7 +227,7 @@ export default function SessionHistoryPage({
         })
         .finally(() => setResumingId(null))
     },
-    [latestWorkbuddyId, t]
+    [t]
   )
 
   /**
@@ -207,6 +246,35 @@ export default function SessionHistoryPage({
   const keyOf = useCallback(
     (session: HistorySession): string => `${session.agent}:${session.id}`,
     []
+  )
+
+  const toggleMessages = useCallback(
+    (session: HistorySession): void => {
+      const key = keyOf(session)
+      if (expandedKey === key) {
+        setExpandedKey(null)
+        setMessageCard(null)
+        return
+      }
+      setExpandedKey(key)
+      setMessageCard(null)
+      setCardLoading(true)
+      void window.assistantApi
+        .messageCard({
+          key,
+          agent: session.agent,
+          id: session.id,
+          path: session.path,
+          title: session.title,
+          cwd: session.cwd,
+          updatedAt: session.updatedAt
+        })
+        .then((card) => {
+          setMessageCard(card)
+        })
+        .finally(() => setCardLoading(false))
+    },
+    [expandedKey, keyOf]
   )
 
   /** 能否整场移入回收站：真实文件/目录才行（db 与合成路径拒绝）。 */
@@ -234,6 +302,9 @@ export default function SessionHistoryPage({
         return
       }
       setAiResult({ answer: response.answer, sessionKeys: response.sessionKeys })
+      void window.assistantApi.listBriefs().then((rows) => {
+        setBriefs(new Map(rows.map((row) => [row.key, row])))
+      })
       // 有命中就直接切到「只看命中」；0 命中保持全列表，让答案自己说话。
       setAiFilterActive(response.sessionKeys.length > 0)
     } catch (error) {
@@ -317,6 +388,7 @@ export default function SessionHistoryPage({
         if (hiddenKeys.includes(keyOf(session))) return false
         if (aiKeys && !aiKeys.has(keyOf(session))) return false
         if (!needle) return true
+        if (messageHits?.has(keyOf(session))) return true
         return (
           session.title.toLowerCase().includes(needle) ||
           session.cwd.toLowerCase().includes(needle) ||
@@ -325,7 +397,7 @@ export default function SessionHistoryPage({
         )
       })
     )
-  }, [sessions, query, agentFilter, showSubagents, hiddenKeys, keyOf, aiFilterActive, aiResult])
+  }, [sessions, query, agentFilter, showSubagents, hiddenKeys, keyOf, aiFilterActive, aiResult, messageHits])
 
   // 按天分组：会话历史里「哪天做的」比「第几条」有用得多。
   const groups = useMemo(() => {
@@ -444,7 +516,7 @@ export default function SessionHistoryPage({
               data-testid="session-history-search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t.searchPlaceholder}
+              placeholder={messageSearchOn ? t.searchPlaceholderMessages : t.searchPlaceholder}
               className="w-full rounded-md border border-border-subtle bg-transparent py-1.5 pr-2 pl-7 text-[11px] text-text-primary outline-none transition-colors placeholder:text-text-faint focus:border-brand/40"
             />
           </label>
@@ -458,6 +530,9 @@ export default function SessionHistoryPage({
             />
             {t.showSubagents}
           </label>
+          {messageBusy && (
+            <span className="shrink-0 font-maple text-[10px] text-text-faint">{t.searchingMessages}</span>
+          )}
         </div>
 
         {/* AI 智能查找 + 查重复 */}
@@ -475,7 +550,7 @@ export default function SessionHistoryPage({
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void runAiSearch()
               }}
-              placeholder={t.aiSearchPlaceholder}
+              placeholder={messageSearchOn ? t.aiSearchPlaceholderMessages : t.aiSearchPlaceholder}
               className="w-full rounded-md border border-border-subtle bg-transparent py-1.5 pr-2 pl-7 text-[11px] text-text-primary outline-none transition-colors placeholder:text-text-faint focus:border-brand/40"
             />
           </label>
@@ -665,6 +740,11 @@ export default function SessionHistoryPage({
                 onResume={handleResume}
                 onOpenWorkbuddy={handleOpenWorkbuddy}
                 onOpenDsh={handleOpenDshSession}
+                brief={briefs.get(key) ?? null}
+                messagesOpen={expandedKey === key}
+                messageCard={expandedKey === key ? messageCard : null}
+                cardLoading={expandedKey === key && cardLoading}
+                onToggleMessages={toggleMessages}
               />
               )
             })}</ul>
@@ -689,9 +769,19 @@ function SessionRow({
   onTrash,
   onResume,
   onOpenWorkbuddy,
-  onOpenDsh
+  onOpenDsh,
+  brief,
+  messagesOpen,
+  messageCard,
+  cardLoading,
+  onToggleMessages
 }: {
   session: HistorySession
+  brief: AssistantBrief | null
+  messagesOpen: boolean
+  messageCard: AssistantMessageCard | null
+  cardLoading: boolean
+  onToggleMessages: (session: HistorySession) => void
   affordance: {
     option: LaunchableCli | null
     blocked: string | null
@@ -724,17 +814,21 @@ function SessionRow({
   const openWorkbuddy = affordance.workbuddy
   const openDsh = affordance.dsh
   const canResume = (Boolean(option) || openWorkbuddy || openDsh) && !resuming
+  const workbuddyAi = session.agent === 'workbuddy-ai'
   const actionLabel = resuming
     ? openWorkbuddy
       ? t.openingWorkbuddy
       : t.resuming
     : openWorkbuddy
-      ? `${t.openWorkbuddy} · ${t.openWorkbuddyHint}`
+      ? workbuddyAi
+        ? `${t.openWorkbuddyAi} · ${t.openWorkbuddyAiHint}`
+        : `${t.openWorkbuddy} · ${t.openWorkbuddyHint}`
       : openDsh
         ? `${t.openDshSession} · ${t.openDshSessionHint}`
         : (affordance.blocked ?? `${t.resume} · ${t.resumeHint}`)
 
   return (
+    <>
     <li
       data-testid="session-history-row"
       data-agent={session.agent}
@@ -793,6 +887,11 @@ function SessionRow({
           <span className="truncate">{baseName(session.cwd) || '—'}</span>
           <span className="truncate">{session.model || '—'}</span>
         </span>
+        {brief?.summary && (
+          <span className="mt-0.5 block truncate text-[10px] text-text-muted" title={brief.summary}>
+            {t.messageSummary}: {brief.summary}
+          </span>
+        )}
       </span>
 
       <span className="w-14 shrink-0 text-right font-maple text-[10px] text-text-faint">
@@ -847,6 +946,23 @@ function SessionRow({
         </button>
       </span>
 
+      <span className="flex w-10 shrink-0 items-center justify-center">
+        <button
+          type="button"
+          data-testid="session-history-messages"
+          title={t.messageToggle}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggleMessages(session)
+          }}
+          className={`rounded px-1 font-pingfang text-[10px] transition-colors ${
+            messagesOpen ? 'text-brand' : 'text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          {t.messageToggle}
+        </button>
+      </span>
+
       {/* 移入系统回收站（可还原）。db / 合成路径不出这个按钮。 */}
       {onTrash && (
         <span className="flex w-6 shrink-0 items-center justify-center">
@@ -872,5 +988,33 @@ function SessionRow({
         </span>
       )}
     </li>
+    {messagesOpen && (
+      <li
+        data-testid="session-history-message-card"
+        className="mb-1 ml-8 mr-2 max-h-[28rem] overflow-auto rounded-md border border-border-faint bg-surface px-3 py-2"
+      >
+        {messageCard?.summary && (
+          <p className="mb-2 text-[11px] leading-5 text-text-secondary">
+            <span className="text-text-faint">{t.messageSummary}: </span>
+            {messageCard.summary}
+          </p>
+        )}
+        {messageCard && messageCard.messages.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {messageCard.messages.map((message, index) => (
+              <p key={`${message.role}-${index}`} className="whitespace-pre-wrap break-words text-[11px] leading-5 text-text-secondary">
+                <span className="text-text-faint">
+                  {message.role === 'user' ? t.messageUser : t.messageAssistant}:{' '}
+                </span>
+                {message.text}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-text-faint">{cardLoading ? t.searchingMessages : t.messageEmpty}</p>
+        )}
+      </li>
+    )}
+    </>
   )
 }

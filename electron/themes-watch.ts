@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import { mkdirSync, watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
 import { ThemeEventChannel } from '../shared/ipc-contract'
+import { sendToEachWindow } from './safe-send'
 
 /**
  * 监视 `<userData>/themes/`，变更（新增/修改/删除）经 300ms debounce 后
@@ -22,10 +23,7 @@ export function startThemeWatcher(): void {
       if (timer) return
       timer = setTimeout(() => {
         timer = null
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (win.isDestroyed() || win.webContents.isDestroyed()) continue
-          win.webContents.send(ThemeEventChannel.UserThemesChanged)
-        }
+        sendToEachWindow(ThemeEventChannel.UserThemesChanged)
       }, 300)
     })
   } catch (error) {

@@ -3,7 +3,7 @@ import { spawn } from 'node-pty'
 import { execFile } from 'node:child_process'
 import { homedir } from 'node:os'
 import { promisify } from 'node:util'
-import { BrowserWindow } from 'electron'
+import { sendToEachWindow } from '../safe-send'
 import {
   ptyDataChannel,
   ptyExitChannel,
@@ -277,9 +277,7 @@ export class PTYManager {
       lowWaterMarkBytes: PTY_DATA_LOW_WATER_MARK_BYTES,
       maxBufferedBytes: PTY_DATA_MAX_BUFFERED_BYTES,
       send: (data) => {
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(ptyDataChannel(ptyId), data)
-        }
+        sendToEachWindow(ptyDataChannel(ptyId), data)
       },
       pause: () => {
         pauseLeases.acquire(rendererPauseOwner)
@@ -323,9 +321,7 @@ export class PTYManager {
         for (const listener of this.cursorSyncListeners.get(ptyId) ?? []) {
           listener(cursor)
         }
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(ptyResizeCursorSyncChannel(ptyId), cursor)
-        }
+        sendToEachWindow(ptyResizeCursorSyncChannel(ptyId), cursor)
       }
       if (displayData.length > 0) {
         managed.displayHistory.appendOutput(displayData)
@@ -350,9 +346,7 @@ export class PTYManager {
     pty.onExit(({ exitCode, signal }) => {
       const ch = ptyExitChannel(ptyId)
       const payload: ExitPayload = { code: exitCode, signal }
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send(ch, payload as never)
-      }
+      sendToEachWindow(ch, payload)
       // 进程退出后仍保留会话历史，直到 renderer 明确 kill/关闭该会话。
       // 否则主进程权威源会在用户最需要回看退出输出时消失。
       const current = this.ptys.get(ptyId)

@@ -8,6 +8,46 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-10-12
+
+这一版补上 WorkBuddy AI 的会话打开，把 AI 查找拆成两个各自开关，并拦住主窗口崩溃后的重载循环。
+
+### 新增
+
+- **WorkBuddy AI 进入会话历史，点开即跳进对应对话。** 列表从 `~/.workbuddy-ai`（可用 `WORKBUDDY_AI_HOME` 改）只读 `workbuddy.db`，和国内版 `~/.workbuddy` 分开。打开一场走客户端注册的深链：国内 `workbuddy://chat/<uuid>`，AI `workbuddy-ai://chat/<uuid>`。历史里列出的每一场都能开。这是跳进客户端里的那一场，不走 CLI resume。飞书 `/打开` 仍只打开最近一场国内 WorkBuddy。
+- **AI 查找增加两个各自独立的开关，默认都关。** 「定期读取消息并写详细概要」打开后，主进程大约每 10 分钟读一批本机会话正文（首次约 15 秒，两次之间至少隔 30 秒）；端点、密钥、模型都填了才写详细概要。关掉它不影响搜索。「搜索标题和消息正文」打开后，本地搜索和 AI 查找同时匹配标题与已经读过的正文、概要。索引、概要和摘录只写在 ASC 自己的 userData 里，不写各 agent 的数据目录。调用模型时，摘录发到用户自己配置的端点。
+
+### 修复
+
+- **主窗口渲染进程崩溃后不再把恢复打成死循环。** 同一扇窗口在 60 秒内最多重载 3 次；重载前先结束这一页带起来的终端，避免刚打崩页面的会话被原样挂回去。超过次数就停，并弹出说明，指向诊断日志。悬浮窗有自己的恢复，不走这条。
+- **发往已销毁渲染帧的消息不再灌爆诊断日志。** 发送先过帧闸门；由广播自身引发的日志只记在本地，不再往外推一次。此前在扫码期间刷新窗口，这条回路可以写出数百 MB 日志。
+
+### 说明
+
+- 两个新开关默认关。没打开「搜索标题和消息正文」时，查找仍只走标题。
+- 本版本不带代码签名。安装包体积以 CI 产物为准，这里不写字节数。
+
+---
+
+### English
+
+This release adds WorkBuddy AI session open, splits AI search into two independent switches, and stops a crashed main window from reloading in a loop.
+
+### Added
+
+- **WorkBuddy AI joins session history, and opening a row jumps into that conversation.** The list reads `workbuddy.db` from `~/.workbuddy-ai` (`WORKBUDDY_AI_HOME` overrides it), separate from the domestic `~/.workbuddy` store. Open uses the deep link the client registered: domestic `workbuddy://chat/<uuid>`, AI `workbuddy-ai://chat/<uuid>`. Every listed session can be opened. The jump lands in the client conversation; it is not a CLI resume. Feishu `/打开` still opens only the latest domestic WorkBuddy session.
+- **AI search gains two independent switches, both off until you turn them on.** "Read messages on a schedule and write a detailed summary" reads a batch of local session text about every 10 minutes (first pass about 15 seconds after start, at least 30 seconds between passes). A detailed summary is written only when the endpoint, key and model are all set. Turning it off leaves search unchanged. "Search titles and message text" makes local search and AI search match titles together with transcripts and summaries already read. The index, summaries and excerpts stay in ASC's own userData and are not written into agent data directories. When a model is called, the excerpt goes to the endpoint you configured.
+
+### Fixed
+
+- **A crashed main renderer no longer turns recovery into a loop.** The same window reloads at most 3 times in 60 seconds. Terminals started by that page are closed before the reload, so the session that just broke the page is not attached again. Past that limit, reload stops and a dialog names the diagnostic log. The floating window has its own recovery and does not use this path.
+- **A send to a disposed render frame no longer floods the diagnostic log.** Sends go through a frame gate first. A log line caused by the broadcast itself is recorded locally and is not broadcast again. Refreshing the window during a Feishu scan used to run that loop into hundreds of megabytes of log.
+
+### Notes
+
+- Both new switches default to off. Until "search titles and message text" is on, search still matches titles.
+- This release is not code-signed. Installer sizes come from the CI artifacts; this entry does not quote bytes.
+
 ## [1.0.4] - 2026-10-11
 
 这一版只做一件事：把安装包做小 —— 干掉应用从不加载的 Electron 运行时文件，以及 node_modules 里的死重。

@@ -330,7 +330,12 @@ const assistantApi: AssistantApi = {
   // apiKey 空字符串 = 保留已存的 key，不回传明文。
   saveConfig: (config) => ipcRenderer.invoke(AssistantInvokeChannel.SaveConfig, config),
   testConfig: () => ipcRenderer.invoke(AssistantInvokeChannel.TestConfig),
-  search: (request) => ipcRenderer.invoke(AssistantInvokeChannel.Search, request)
+  search: (request) => ipcRenderer.invoke(AssistantInvokeChannel.Search, request),
+  digestStatus: () => ipcRenderer.invoke(AssistantInvokeChannel.DigestStatus),
+  runDigest: () => ipcRenderer.invoke(AssistantInvokeChannel.RunDigest),
+  matchMessages: (request) => ipcRenderer.invoke(AssistantInvokeChannel.MatchMessages, request),
+  messageCard: (key) => ipcRenderer.invoke(AssistantInvokeChannel.MessageCard, key),
+  listBriefs: () => ipcRenderer.invoke(AssistantInvokeChannel.ListBriefs)
 }
 
 const agentApi: AgentApi = {

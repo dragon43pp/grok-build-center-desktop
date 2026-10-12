@@ -6,7 +6,7 @@
  *     --platform=node --format=esm --outfile=tools/_workbuddy_open_check.mjs \
  *     && node tools/_workbuddy_open_check.mjs
  */
-import { pickLatestWorkbuddy, workbuddyChatUrl } from '../shared/workbuddy-open'
+import { pickLatestWorkbuddy, workbuddyAiChatUrl, workbuddyChatUrl } from '../shared/workbuddy-open'
 
 let pass = 0
 let fail = 0
@@ -31,6 +31,9 @@ for (const bad of ['', '   ', '../etc', `${id}/extra`, `${id}?x=1`, `workbuddy-a
 }
 
 check('国际 scheme 不会被拼出来', workbuddyChatUrl(id)?.startsWith('workbuddy://chat/') === true)
+check('uuid → workbuddy-ai://chat/<id>', workbuddyAiChatUrl(id) === `workbuddy-ai://chat/${id}`)
+check('国内函数不会拼出国际 scheme', workbuddyChatUrl(id) !== workbuddyAiChatUrl(id))
+check('国际函数拒绝国内链接串', workbuddyAiChatUrl(`workbuddy://chat/${id}`) === null)
 
 const older = { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', title: '旧的', updatedAt: '2026-10-01T00:00:00.000Z' }
 const newer = { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', title: '新的', updatedAt: '2026-10-03T00:00:00.000Z' }

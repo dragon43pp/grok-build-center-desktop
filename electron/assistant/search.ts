@@ -10,14 +10,25 @@ import type {
 import type { HistorySession } from '../../shared/session-history'
 import type { AssistantConfig } from './store'
 import { isConfigured } from './store'
+import type { MessageSearchPack } from './messages'
 
 /** 清单上限： Recent 400 场足够覆盖查找需求，也控住 token 预算。 */
 const INVENTORY_LIMIT = 400
 const CHAT_HISTORY_LIMIT = 6
 const REQUEST_TIMEOUT_MS = 60_000
 
+const MESSAGE_SYSTEM_PROMPT = [
+  '你是「ASC 会话历史」的检索助手。用户在管理多个本地 AI 会话。',
+  '下面每行是：key | agent | 标题 | 消息摘录。摘录来自本机读到的对话正文和概要。',
+  '标题和消息正文都要用来判断，不要只看标题。',
+  '可以命中 0 条，不要硬凑。用中文给一句简短结论。',
+  '只输出一个 JSON 对象，不要 markdown 代码块，格式：',
+  '{"answer": "中文结论", "sessionKeys": ["grok:abc"]}',
+  'sessionKeys 必须逐字取自清单第一列的 key。'
+].join('\n')
+
 const SYSTEM_PROMPT = [
-  '你是「ASC 会话历史」的检索助手。用户在管理多个 AI CLI（grok/codex/claude/opencode/kimi/pi/antigravity/workbuddy）的本地会话历史。',
+  '你是「ASC 会话历史」的检索助手。用户在管理多个 AI CLI（grok/codex/claude/opencode/kimi/pi/antigravity/workbuddy/workbuddy-ai）的本地会话历史。',
   '下面给你一份会话清单（每行：key | agent | 标题 | 工作目录 | 模型 | 更新时间 | 消息数 | tokens）。',
   '用户的问题是自然语言查找请求，例如「找上周关于飞书路由的 codex 会话」「哪些会话在做日报自动化」「帮我找重复的会话」。',
   '你的任务：',
@@ -85,17 +96,53 @@ function parseModelReply(raw: string): { answer: string; sessionKeys: string[] }
   }
 }
 
+function buildMessagePrompt(
+  sessions: readonly HistorySession[],
+  pack: MessageSearchPack,
+  query: string
+): string {
+  const lines = pack.snippets
+    .map((snippet) => {
+      const title = snippet.title.replace(/[|\n]/g, ' ').slice(0, 120)
+      const excerpt = snippet.excerpt.replace(/\s+/g, ' ').slice(0, 700)
+      return `${snippet.key} | ${snippet.key.split(':')[0]} | ${title} | ${excerpt || '-'}`
+    })
+    .join('\n')
+  return [
+    `会话清单（最多 ${INVENTORY_LIMIT} 条，按最近排序；标题、目录、模型都在）：`,
+    buildInventory(sessions),
+    '',
+    '本机消息摘录（和标题一起判断，不要只看标题）：',
+    lines || '（正文没有直接字面命中，请按上面的标题清单判断）',
+    '',
+    `用户请求：${query}`
+  ].join('\n')
+}
+
 export async function assistantSearch(
   config: AssistantConfig,
   sessions: readonly HistorySession[],
-  request: AssistantSearchRequest
+  request: AssistantSearchRequest,
+  messagePack?: MessageSearchPack
 ): Promise<AssistantSearchResponse> {
   const started = Date.now()
   const query = request.query.trim()
   if (query === '') {
     return { ok: false, answer: '', sessionKeys: [], tookMs: 0, errorCode: 'bad_response', errorMessage: '问题为空' }
   }
+  const messageSearch = messagePack !== undefined
   if (!isConfigured(config)) {
+    if (messageSearch) {
+      return {
+        ok: true,
+        answer:
+          messagePack.localKeys.length > 0
+            ? `按标题和消息正文命中 ${messagePack.localKeys.length} 场。模型端点未启用，这是本机匹配。`
+            : '标题和消息正文里都没有这句。模型端点未启用。',
+        sessionKeys: messagePack.localKeys,
+        tookMs: Date.now() - started
+      }
+    }
     return {
       ok: false,
       answer: '',
@@ -117,9 +164,15 @@ export async function assistantSearch(
     .map((turn) => ({ role: turn.role, content: turn.content.slice(0, 2000) }))
 
   const messages = [
-    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'system' as const, content: messageSearch ? MESSAGE_SYSTEM_PROMPT : SYSTEM_PROMPT },
     ...history,
-    { role: 'user' as const, content: buildUserPrompt(sessions, query) }
+    {
+      role: 'user' as const,
+      content:
+        messageSearch && messagePack
+          ? buildMessagePrompt(sessions, messagePack, query)
+          : buildUserPrompt(sessions, query)
+    }
   ]
 
   const controller = new AbortController()
@@ -141,6 +194,14 @@ export async function assistantSearch(
     })
     if (!response.ok) {
       const body = await response.text().catch(() => '')
+      if (messageSearch && messagePack.localKeys.length > 0) {
+        return {
+          ok: true,
+          answer: `按标题和消息正文命中 ${messagePack.localKeys.length} 场。模型端点返回 ${response.status}。`,
+          sessionKeys: messagePack.localKeys,
+          tookMs: Date.now() - started
+        }
+      }
       return {
         ok: false,
         answer: '',
@@ -164,15 +225,34 @@ export async function assistantSearch(
     }
     const parsed = parseModelReply(content)
     // 只保留清单里真实存在的 key，防止模型编造。
-    const known = new Set(sessions.slice(0, INVENTORY_LIMIT).map((s) => `${s.agent}:${s.id}`))
+    // 消息搜索时本机原文命中也要留下，不能只信模型挑的标题。
+    const known = new Set(
+      (messageSearch ? sessions : sessions.slice(0, INVENTORY_LIMIT)).map((s) => `${s.agent}:${s.id}`)
+    )
+    const modelKeys = [...new Set(parsed.sessionKeys)].filter((key) => known.has(key))
+    const sessionKeys = messageSearch
+      ? [...new Set([...messagePack.localKeys, ...modelKeys])].filter((key) => known.has(key))
+      : modelKeys
+    const answer =
+      messageSearch && messagePack.localKeys.length > 0 && !parsed.answer.includes('消息')
+        ? `${parsed.answer} 本机标题和消息正文直接命中 ${messagePack.localKeys.length} 场。`
+        : parsed.answer
     return {
       ok: true,
-      answer: parsed.answer,
-      sessionKeys: [...new Set(parsed.sessionKeys)].filter((key) => known.has(key)),
+      answer,
+      sessionKeys,
       tookMs: Date.now() - started
     }
   } catch (error) {
     const aborted = error instanceof Error && error.name === 'AbortError'
+    if (messageSearch && messagePack.localKeys.length > 0) {
+      return {
+        ok: true,
+        answer: `按标题和消息正文命中 ${messagePack.localKeys.length} 场。模型这次没有返回结论。`,
+        sessionKeys: messagePack.localKeys,
+        tookMs: Date.now() - started
+      }
+    }
     return {
       ok: false,
       answer: '',

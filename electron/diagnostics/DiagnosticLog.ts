@@ -106,7 +106,8 @@ export class DiagnosticLog {
    * 控制台捕获吃进 append，append 再 publish，监听者又广播一次，于是：
    *   send 失败 → console.error → append → publish → broadcast → send 失败 → …
    * 形成一个每轮只写一行的死循环（实测在扫码期间刷新窗口可灌出 500MB+ 日志）。
-   * 拦法很明确：**由广播自身引发的日志不再触发广播**。日志该记照记，
+   * 发送侧必须先走 safeSend / 帧闸门，根本不打已 dispose 的帧。
+   * 这里是第二道：**由广播自身引发的日志不再触发广播**。日志该记照记，
    * 只是不再往外推一次。
    */
   private publishing = false

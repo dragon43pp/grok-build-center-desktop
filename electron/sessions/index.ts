@@ -27,6 +27,7 @@ import { BUILTIN_PRICES } from './pricing-table'
 import {
   antigravityCliHome,
   dshHome,
+  workbuddyAiHome,
   workbuddyHome,
   antigravityIdeHome,
   claudeConfigDir,
@@ -44,7 +45,7 @@ import { readKimiSessions } from './readers/kimi'
 import { readOpenCodeSessions } from './readers/opencode'
 import { readPiSessions } from './readers/pi'
 import { readDshSessions } from './readers/dsh'
-import { readWorkbuddySessions } from './readers/workbuddy'
+import { readWorkbuddyAiSessions, readWorkbuddySessions } from './readers/workbuddy'
 
 interface ReaderSpec {
   agent: AgentId
@@ -109,6 +110,11 @@ const SPECS: Record<AgentId, ReaderSpec> = {
     agent: 'workbuddy',
     read: readWorkbuddySessions,
     root: async () => workbuddyHome()
+  },
+  'workbuddy-ai': {
+    agent: 'workbuddy-ai',
+    read: readWorkbuddyAiSessions,
+    root: async () => workbuddyAiHome()
   },
   dsh: {
     agent: 'dsh',

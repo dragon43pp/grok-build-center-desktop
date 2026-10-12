@@ -12,8 +12,21 @@ interface ConfigStatus {
   baseURL: string
   model: string
   enabled: boolean
+  digestEnabled: boolean
+  messageSearchEnabled: boolean
   hasApiKey: boolean
   apiKeyMasked: string | null
+}
+
+interface DigestState {
+  running: boolean
+  lastRunAt: string | null
+  lastError: string | null
+  summaryNote: string | null
+  indexed: number
+  summarized: number
+  lastRead: number
+  lastSummarized: number
 }
 
 export default function AssistantSettingsSection(): React.JSX.Element {
@@ -24,6 +37,10 @@ export default function AssistantSettingsSection(): React.JSX.Element {
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('')
   const [enabled, setEnabled] = useState(false)
+  const [digestEnabled, setDigestEnabled] = useState(false)
+  const [messageSearchEnabled, setMessageSearchEnabled] = useState(false)
+  const [digest, setDigest] = useState<DigestState | null>(null)
+  const [digestBusy, setDigestBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [testMessage, setTestMessage] = useState<string | null>(null)
@@ -38,9 +55,26 @@ export default function AssistantSettingsSection(): React.JSX.Element {
       setBaseURL(config.baseURL)
       setModel(config.model)
       setEnabled(config.enabled)
+      setDigestEnabled(config.digestEnabled)
+      setMessageSearchEnabled(config.messageSearchEnabled)
     })
     return () => {
       alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    const pull = (): void => {
+      void window.assistantApi.digestStatus().then((next) => {
+        if (alive) setDigest(next)
+      })
+    }
+    pull()
+    const timer = window.setInterval(pull, 4000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
     }
   }, [])
 
@@ -49,7 +83,7 @@ export default function AssistantSettingsSection(): React.JSX.Element {
     setBusy(true)
     setSaved(false)
     void window.assistantApi
-      .saveConfig({ baseURL, apiKey, model, enabled })
+      .saveConfig({ baseURL, apiKey, model, enabled, digestEnabled, messageSearchEnabled })
       .then((next) => {
         setStatus(next)
         setApiKey('')
@@ -65,7 +99,7 @@ export default function AssistantSettingsSection(): React.JSX.Element {
     setTestMessage(null)
     // 先落一次盘再测，保证测的就是表单里的值（密钥留空 = 保留旧的）。
     void window.assistantApi
-      .saveConfig({ baseURL, apiKey, model, enabled })
+      .saveConfig({ baseURL, apiKey, model, enabled, digestEnabled, messageSearchEnabled })
       .then((next) => {
         setStatus(next)
         setApiKey('')
@@ -76,6 +110,20 @@ export default function AssistantSettingsSection(): React.JSX.Element {
         setTestMessage(result.message)
       })
       .finally(() => setTestBusy(false))
+  }
+
+  const runDigest = (): void => {
+    if (digestBusy) return
+    setDigestBusy(true)
+    void window.assistantApi
+      .saveConfig({ baseURL, apiKey, model, enabled, digestEnabled, messageSearchEnabled })
+      .then((next) => {
+        setStatus(next)
+        setApiKey('')
+        return window.assistantApi.runDigest()
+      })
+      .then((next) => setDigest(next))
+      .finally(() => setDigestBusy(false))
   }
 
   const inputClass =
@@ -177,6 +225,17 @@ export default function AssistantSettingsSection(): React.JSX.Element {
           {testBusy ? t.assistantTesting : t.assistantTest}
         </button>
 
+        <button
+          type="button"
+          data-testid="settings-assistant-digest-now"
+          disabled={digestBusy || digest?.running}
+          onClick={runDigest}
+          className="inline-flex h-[30px] items-center gap-1.5 rounded-lg border border-border-default bg-input px-2.5 font-pingfang text-[11px] font-medium text-text-muted transition-colors hover:bg-input-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {(digestBusy || digest?.running) && <Loader2 className="size-3 animate-spin" strokeWidth={1.75} />}
+          {digestBusy || digest?.running ? t.assistantDigestRunning : t.assistantDigestNow}
+        </button>
+
         {testMessage && (
           <span
             data-testid="settings-assistant-test-result"
@@ -186,6 +245,44 @@ export default function AssistantSettingsSection(): React.JSX.Element {
           </span>
         )}
       </div>
+
+      <label className="flex cursor-target items-start gap-1.5 font-pingfang text-[11px] text-text-secondary select-none">
+        <input
+          type="checkbox"
+          data-testid="settings-assistant-digest"
+          checked={digestEnabled}
+          onChange={(event) => setDigestEnabled(event.target.checked)}
+          className="mt-0.5 size-3 accent-[var(--asc-brand,#FF6B4A)]"
+        />
+        <span>
+          <span className="font-medium">{t.assistantDigest}</span>
+          <span className="mt-0.5 block max-w-[720px] leading-5 text-text-faint">{t.assistantDigestHint}</span>
+        </span>
+      </label>
+
+      <label className="flex cursor-target items-start gap-1.5 font-pingfang text-[11px] text-text-secondary select-none">
+        <input
+          type="checkbox"
+          data-testid="settings-assistant-message-search"
+          checked={messageSearchEnabled}
+          onChange={(event) => setMessageSearchEnabled(event.target.checked)}
+          className="mt-0.5 size-3 accent-[var(--asc-brand,#FF6B4A)]"
+        />
+        <span>
+          <span className="font-medium">{t.assistantMessageSearch}</span>
+          <span className="mt-0.5 block max-w-[720px] leading-5 text-text-faint">
+            {t.assistantMessageSearchHint}
+          </span>
+        </span>
+      </label>
+      <p data-testid="settings-assistant-digest-status" className="font-maple text-[10px] text-text-faint">
+        {digest?.lastRunAt
+          ? t.assistantDigestStatus(digest.indexed, digest.summarized, digest.lastRunAt.slice(0, 16).replace('T', ' '))
+          : t.assistantDigestIdle}
+        {digest?.lastRead ? ` · ${digest.lastRead}` : ''}
+        {digest?.summaryNote ? ` · ${digest.summaryNote}` : ''}
+        {digest?.lastError ? ` · ${digest.lastError}` : ''}
+      </p>
     </div>
   )
 }

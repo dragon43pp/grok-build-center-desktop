@@ -5,9 +5,10 @@
  * no-resume-command，桥接层的 resumable 保持 false，飞书 /继续 不会把它
  * 当成终端会话。
  *
- * 国内客户端注册了 `workbuddy://chat/<id>`。桌面历史页和飞书 /打开 只对
- * 最近一场走这条链接（`shell.openExternal`），不开国际版 `workbuddy-ai://`。
- * 下面的 `path` 仍是 `workbuddy://<id>` 标识，不是可点击的深链。
+ * 国内客户端注册了 `workbuddy://chat/<id>`。国际版是另一套库
+ * （`~/.workbuddy-ai`），由 `readWorkbuddyAiSessions` 读。
+ * 打开时各自拼 `workbuddy://chat/<id>` / `workbuddy-ai://chat/<id>`，
+ * 跳进客户端里的对应对话，不混用。列表里的 path 仍是 `scheme://<id>`。
  *
  * 数据形状（2026-10-01 实测，1890 行）：
  *   - `sessions`：id / cwd / title / status / created_at / updated_at（毫秒）/
@@ -20,11 +21,16 @@
  */
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import type { HistorySession } from '../types'
-import { emptyUsage } from '../types'
+import { emptyUsage, type AgentId, type HistorySession } from '../types'
 import { isoFromMs, toTitle } from '../fsUtil'
 import { openReadOnly } from '../sqlite'
-import { workbuddyHome } from '../paths'
+import { workbuddyAiHome, workbuddyHome } from '../paths'
+
+interface WorkbuddyReadSpec {
+  home: string
+  agent: Extract<AgentId, 'workbuddy' | 'workbuddy-ai'>
+  scheme: 'workbuddy' | 'workbuddy-ai'
+}
 
 interface SessionRow {
   id: unknown
@@ -45,7 +51,25 @@ function ms(value: unknown): number {
 export async function readWorkbuddySessions(
   rootOverride?: string | null
 ): Promise<HistorySession[]> {
-  const home = rootOverride || workbuddyHome()
+  return readWorkbuddyDb({
+    home: rootOverride || workbuddyHome(),
+    agent: 'workbuddy',
+    scheme: 'workbuddy'
+  })
+}
+
+export async function readWorkbuddyAiSessions(
+  rootOverride?: string | null
+): Promise<HistorySession[]> {
+  return readWorkbuddyDb({
+    home: rootOverride || workbuddyAiHome(),
+    agent: 'workbuddy-ai',
+    scheme: 'workbuddy-ai'
+  })
+}
+
+async function readWorkbuddyDb(spec: WorkbuddyReadSpec): Promise<HistorySession[]> {
+  const home = spec.home
   const dbPath = join(home, 'workbuddy.db')
   if (!existsSync(dbPath)) return []
 
@@ -77,7 +101,7 @@ export async function readWorkbuddySessions(
             : row.title
         ) || '(untitled)'
       sessions.push({
-        agent: 'workbuddy',
+        agent: spec.agent,
         id,
         title,
         cwd: typeof row.cwd === 'string' ? row.cwd : '',
@@ -93,7 +117,7 @@ export async function readWorkbuddySessions(
         costUsd: 0,
         costSource: 'none',
         storage: 'db',
-        path: `workbuddy://${id}`,
+        path: `${spec.scheme}://${id}`,
         archived: false,
         subagent: false
       })

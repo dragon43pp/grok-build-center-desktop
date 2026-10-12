@@ -22,6 +22,13 @@ export function workbuddyChatUrl(sessionId: string): string | null {
   return `workbuddy://chat/${id}`
 }
 
+/** 合法 id 返回 WorkBuddy AI 深链。和国内版分开拼。 */
+export function workbuddyAiChatUrl(sessionId: string): string | null {
+  const id = sessionId.trim()
+  if (!WORKBUDDY_SESSION_ID.test(id)) return null
+  return `workbuddy-ai://chat/${id}`
+}
+
 function activityMs(session: WorkbuddyOpenCandidate): number {
   const value = session.updatedAt ?? session.createdAt ?? null
   if (!value) return 0

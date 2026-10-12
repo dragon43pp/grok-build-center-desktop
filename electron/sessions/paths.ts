@@ -95,6 +95,11 @@ export function workbuddyHome(): string {
   return resolveDir(process.env.WORKBUDDY_HOME, join(home, '.workbuddy'))
 }
 
+/** WorkBuddy AI 的本机数据目录：`~/.workbuddy-ai/`，和国内版不是同一套库。 */
+export function workbuddyAiHome(): string {
+  return resolveDir(process.env.WORKBUDDY_AI_HOME, join(home, '.workbuddy-ai'))
+}
+
 /** `~/.gemini/` — the parent of both Antigravity stores. */
 function geminiDir(): string {
   return resolveDir(process.env.GEMINI_HOME, join(home, '.gemini'))

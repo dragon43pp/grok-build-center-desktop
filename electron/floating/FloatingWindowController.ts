@@ -16,6 +16,7 @@ import {
   type FloatingWindowState
 } from '../../shared/floating-window'
 import { AppEventChannel } from '../../shared/ipc-contract'
+import { safeSend, sendToEachWindow } from '../safe-send'
 import { getMainPrefs, persistMainPrefs } from '../main-prefs'
 import {
   FloatingRendererRegistry,
@@ -335,12 +336,10 @@ export class ElectronFloatingWindowController
     if (mainWindow.isMinimized()) mainWindow.restore()
     mainWindow.show()
     mainWindow.focus()
-    if (!mainWindow.webContents.isDestroyed()) {
-      mainWindow.webContents.send(AppEventChannel.FocusSession, {
-        sessionId: projection.sessionId,
-        terminalId: projection.terminalId
-      })
-    }
+    safeSend(mainWindow.webContents, AppEventChannel.FocusSession, {
+      sessionId: projection.sessionId,
+      terminalId: projection.terminalId
+    })
     return true
   }
 
@@ -758,17 +757,14 @@ export class ElectronFloatingWindowController
 
   private broadcastState(): void {
     const state = this.getState()
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.webContents.isDestroyed()) {
-        win.webContents.send(FloatingWindowEventChannel.StateChanged, state)
-      }
-    }
+    sendToEachWindow(FloatingWindowEventChannel.StateChanged, state)
   }
 
   private broadcastSnapshot(): void {
     const win = this.window
-    if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return
-    win.webContents.send(
+    if (!win || win.isDestroyed()) return
+    safeSend(
+      win.webContents,
       FloatingWindowEventChannel.SnapshotChanged,
       this.getSnapshot()
     )

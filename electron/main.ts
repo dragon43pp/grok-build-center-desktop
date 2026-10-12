@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog } from 'electron'
 import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createWindow } from './window'
+import { attachMainRendererRecovery } from './main-window-recovery'
+import { canReceiveIpc, installIpcFrameGate, safeSend, sendToEachWindow } from './safe-send'
 import { registerIpc, type IpcContext } from './ipc'
 import { PTYManager } from './pty/PTYManager'
 import { EventLog } from './events/EventLog'
@@ -82,6 +84,7 @@ import { runtimeRemoteWorkspaceHost } from './remote/runtimeRemoteWorkspaceHost'
 import { DiagnosticLog } from './diagnostics/DiagnosticLog'
 import { configurePricingCache } from './sessions/pricing'
 import { discoverSessions } from './sessions'
+import { startDigestScheduler, stopDigestScheduler } from './assistant/digest-scheduler'
 import { DiagnosticLogEventChannel } from '../shared/diagnostic-log'
 
 
@@ -138,6 +141,9 @@ const diagnosticLog = new DiagnosticLog(diagnosticLogPath)
 if (isPrimaryInstance) {
   diagnosticLog.installConsoleCapture()
   app.on('web-contents-created', (_event, contents) => {
+    // 闸门必须先于诊断监听注册：崩溃事件里先标帧不可用，再记日志，
+    // 否则「记日志 → 广播」会打进已 dispose 的帧。
+    installIpcFrameGate(contents)
     diagnosticLog.captureWebContents(contents)
   })
   // GPU 进程起不来时，Chromium 的行为是重试几次后打出
@@ -178,21 +184,9 @@ const cliDiscovery = new AiCliDiscoveryService(
 const eventLog = new EventLog()
 let floatingController: FloatingWindowController | null = null
 const broadcastToAllWindows = (channel: string, payload: unknown): void => {
-  // 退出阶段窗口正在拆，webContents 未销毁但渲染帧可能已 dispose —— 往那里 send
-  // 不会抛异常，而是 Electron 自己 console.error（再被诊断日志捕获）。退出后没必要
-  // 再广播任何状态，直接停。
-  if (isQuitting()) return
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (win.webContents.isDestroyed()) continue
-    try {
-      win.webContents.send(channel, payload)
-    } catch {
-      // Frame 已销毁（重载/导航/关窗途中）时 send 可能直接抛。
-      // 注意：Electron 多数情况下不抛，而是自己 console.error —— 那条错误会被
-      // DiagnosticLog 捕获，必须靠 DiagnosticLog 的重入闸门兜住，否则会形成
-      // 「广播失败 → 记日志 → 又广播」的死循环。两边都不能少。
-    }
-  }
+  // 退出、崩溃、重载空窗都不送。safeSend 跳过已 dispose 的帧，并且不写日志，
+  // 避免「send 失败 → console.error → 诊断广播 → 再 send」把日志打到几百 MB。
+  sendToEachWindow(channel, payload)
 }
 diagnosticLog.onChanged((change) => {
   broadcastToAllWindows(DiagnosticLogEventChannel.Changed, change)
@@ -208,11 +202,7 @@ const observerRegistry = new ObserverRegistry()
 const hookIngress = new HookIngress()
 const workspaceReader = new WorkspaceReader()
 workspaceReader.onChanged((change) => {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.webContents.isDestroyed()) {
-      win.webContents.send(WorkspaceReaderEventChannel.Changed, change)
-    }
-  }
+  sendToEachWindow(WorkspaceReaderEventChannel.Changed, change)
 })
 manager.onTerminalRemoved((terminalId) => workspaceReader.unmount(terminalId))
 observerRegistry.register(new ClaudeObserverAdapter(hookIngress))
@@ -278,7 +268,7 @@ const controlPlane = new OpenCodeControlPlane({
   },
   launchVisible: async (request: BridgeLaunchRequest) => {
     const win = winRef && !winRef.isDestroyed() ? winRef : null
-    if (!win || win.webContents.isDestroyed()) {
+    if (!win || !canReceiveIpc(win.webContents)) {
       return 'Agent Session Center window is not available'
     }
     if (!raiseMainWindow(win)) {
@@ -291,10 +281,14 @@ const controlPlane = new OpenCodeControlPlane({
         name: request.name,
         ...estimateTerminalSize(win)
       })
-      win.webContents.send(AppEventChannel.BridgeLaunch, {
-        ...request,
-        ptyId: started.ptyId
-      })
+      if (
+        !safeSend(win.webContents, AppEventChannel.BridgeLaunch, {
+          ...request,
+          ptyId: started.ptyId
+        })
+      ) {
+        return 'Agent Session Center window is not available'
+      }
       return null
     } catch (error) {
       return error instanceof Error ? error.message : String(error)
@@ -358,8 +352,8 @@ const remoteClient = new RemoteDesktopClient({
   pty: runtimeRemotePtyHost(agentRuntime, manager),
   launch: runtimeRemoteLaunchHost(cliDiscovery, agentRuntime, (request) => {
     const win = winRef && !winRef.isDestroyed() ? winRef : null
-    if (!win || win.webContents.isDestroyed()) return
-    win.webContents.send(AppEventChannel.RemoteLaunch, request)
+    if (!win) return
+    safeSend(win.webContents, AppEventChannel.RemoteLaunch, request)
   }),
   workspace: runtimeRemoteWorkspaceHost(cliDiscovery),
   focusSession: (sessionId) => {
@@ -483,9 +477,13 @@ const feishuRouter = createFeishuRouter({
     const window = winRef
     // dsh 的「恢复」发生在 ASC 自己的 DSH 界面里：把导航事件推给渲染进程，
     // 它会用 intent:'resume' 让官方界面打开这一场（见 DshPage）。
-    window.webContents.send(AppEventChannel.OpenDshSession, {
-      sessionId: latest.sessionId
-    })
+    if (
+      !safeSend(window.webContents, AppEventChannel.OpenDshSession, {
+        sessionId: latest.sessionId
+      })
+    ) {
+      return { ok: false, message: '主窗口正在恢复，稍后再打开这一场。' }
+    }
     return {
       ok: true,
       message: `已在 DSH 界面打开「${latest.title || latest.sessionId}」。`
@@ -522,6 +520,7 @@ function prepareShutdown(): Promise<void> {
   if (shutdownPromise) return shutdownPromise
   shutdownStarted = true
   markQuitting()
+  stopDigestScheduler()
   updateService.dispose()
   shutdownPromise = (async () => {
     // Agent Runtime 先写入退出事实并回收 observer；随后兜底关闭普通终端。
@@ -649,8 +648,8 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
     },
     showWindow,
     openNewSession: () => {
-      if (winRef && !winRef.isDestroyed() && !winRef.webContents.isDestroyed()) {
-        winRef.webContents.send(AppEventChannel.OpenNewSession)
+      if (winRef && !winRef.isDestroyed()) {
+        safeSend(winRef.webContents, AppEventChannel.OpenNewSession)
       }
     },
     quit: () => {
@@ -683,6 +682,7 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
   }
 
   registerIpc(manager, ctx)
+  startDigestScheduler(app.getPath('userData'))
   // 飞书凭据若已存在就立刻建连。刻意不 await：读盘+建连都不该挡住窗口出现，
   // 而 initialize 内部已经把失败收敛成状态字段，晚到的状态会用广播补上。
   void feishu.initialize()
@@ -695,8 +695,38 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
     // not block the window — skip-approval / TUI still work without the bridge.
     console.warn('[asc] bridge listen failed; continuing without it', error)
   }
-  winRef = createWindow(prefs)
-  attachDshSurface(winRef)
+  const openMainWindow = (): BrowserWindow => {
+    const win = createWindow(prefs)
+    winRef = win
+    attachDshSurface(win)
+    attachMainRendererRecovery(win, {
+      isQuitting,
+      log: (message) => diagnosticLog.append('error', 'main', message),
+      hideDshSurface: () => {
+        try {
+          dshSurfaceController?.hide()
+        } catch {
+          // 窗口正在拆时隐藏 DSH 表面可以失败，恢复流程继续。
+        }
+      },
+      killPtyChildren: () => manager.killAll(),
+      disposeAgentSessions: () => agentRuntime.disposeAll(),
+      onGaveUp: (summary) => {
+        if (isQuitting() || process.env['ASC_E2E']) return
+        const isZh = app.getLocale().startsWith('zh')
+        dialog.showErrorBox(
+          isZh
+            ? 'Agent Session Center 界面无法恢复'
+            : 'Agent Session Center could not restore the window',
+          isZh
+            ? `主窗口连续崩溃，已停止自动重载。这次带起来的终端已经退出，避免同一场会话再把页面打崩。\n\n${summary}\n\n诊断日志：\n${diagnosticLogPath}`
+            : `The main window crashed repeatedly, so automatic reload stopped. Terminals from that page were closed so the same session is not replayed into a broken page.\n\n${summary}\n\nDiagnostic log:\n${diagnosticLogPath}`
+        )
+      }
+    })
+    return win
+  }
+  const mainWindow = openMainWindow()
   floatingController = new ElectronFloatingWindowController({
     getMainWindow: () =>
       winRef && !winRef.isDestroyed() ? winRef : null,
@@ -713,7 +743,7 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
   await floatingController.setEnabled(prefs.floatingWindowEnabled)
   trayRef = createTray(prefs.language, trayCallbacks)
   if (prefs.globalShortcutEnabled) {
-    registerGlobalShortcut(winRef)
+    registerGlobalShortcut(mainWindow)
   }
   startThemeWatcher()
 
@@ -745,8 +775,8 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
         }
       },
       openNewSession: () => {
-        if (winRef && !winRef.isDestroyed() && !winRef.webContents.isDestroyed()) {
-          winRef.webContents.send(AppEventChannel.OpenNewSession)
+        if (winRef && !winRef.isDestroyed()) {
+          safeSend(winRef.webContents, AppEventChannel.OpenNewSession)
         }
       },
       dshSurfaceSnapshot: () => dshSurfaceController?.snapshot() ?? null,
@@ -786,8 +816,7 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      winRef = createWindow(prefs)
-      attachDshSurface(winRef)
+      openMainWindow()
     } else {
       showWindow()
     }
