@@ -44,6 +44,7 @@ export const ja = {
     sessionActions: 'セッション操作',
     createChildTerminal: '子ターミナルを作成',
     cloneSession: 'セッションを複製',
+    forkSession: 'セッションをフォーク（分岐して続行）',
     childTerminals: '子ターミナルを展開または折りたたむ',
     renameSession: '名前を変更',
     sessionNameRequired: 'セッション名を入力してください'

@@ -24,7 +24,11 @@
  * 待办（都不影响现在能用）：
  *   - grok 的 `--restore-code` 会连仓库快照一起还原（远程会话要求配合 `--worktree`），
  *     以后可以做成一个「连代码一起还原」的选项。
- *   - `--fork-session` 已确认存在，可以做成「从这里分叉」的第二个入口。
+ *
+ * 已完成：`--fork-session` 分叉入口（见 planFork，2026-10-13 本机实测：
+ *   claude 2.1.178 与 grok 的 `--help` 都有这面旗（"When resuming, create a new
+ *   session ID with --resume or --continue"），codex 的 `resume` 子命令没有 ——
+ *   所以 codex 不给分叉按钮；opencode / kimi / pi / antigravity 仍未实测，同样不给。
  */
 import type { AgentId, HistorySession } from './session-history'
 
@@ -63,6 +67,25 @@ const SPECS: Partial<Record<AgentId, ResumeSpec>> = {
   }
 }
 
+/**
+ * 分叉专用的参数表。**只有 claude 和 grok**：`--fork-session` 这面旗只在
+ * 这两个 CLI 的 `--help` 里实测见过（2026-10-13，本机）；codex 的 `resume`
+ * 子命令没有它，其余 agent 连 resume 都没收录。和 SPECS 分开两张表，
+ * 是为了「能恢复」和「能分叉」互不绑架 —— codex 就是那个能恢复不能分叉的。
+ */
+const FORK_SPECS: Partial<Record<AgentId, ResumeSpec>> = {
+  grok: {
+    cliId: 'grok',
+    args: (sessionId, model) =>
+      withModel((id) => ['--resume', id, '--fork-session'], sessionId, model)
+  },
+  claude: {
+    cliId: 'claude',
+    args: (sessionId, model) =>
+      withModel((id) => ['--resume', id, '--fork-session'], sessionId, model)
+  }
+}
+
 export type ResumeBlocker =
   /** 该 agent 没有实测过的恢复命令。 */
   | 'no-resume-command'
@@ -71,9 +94,21 @@ export type ResumeBlocker =
   /** 子代理会话：它属于另一场会话，单独恢复没有意义。 */
   | 'subagent'
 
+/**
+ * 分叉专属的 blocker：恢复的三条全都适用，再加一条「没实测过分叉命令」。
+ * 不把 no-fork-support 塞进 ResumeBlocker，是因为恢复侧（桥的
+ * `BridgeHistoryBlockedCode`、历史页的提示文案）永远不该看到它 ——
+ * codex 能恢复不能分叉，两张表必须各管各的。
+ */
+export type ForkBlocker = ResumeBlocker | 'no-fork-support'
+
 export type ResumePlan =
   | { ok: true; cliId: string; args: string[] }
   | { ok: false; blocker: ResumeBlocker }
+
+export type ForkPlan =
+  | { ok: true; cliId: string; args: string[] }
+  | { ok: false; blocker: ForkBlocker }
 
 /**
  * 这场会话能不能恢复、参数是什么。只判断「会话本身」的条件；
@@ -86,6 +121,24 @@ export function planResume(session: HistorySession, model?: string): ResumePlan 
   if (!session.id.trim()) return { ok: false, blocker: 'no-session-id' }
   const spec = SPECS[session.agent]
   if (!spec) return { ok: false, blocker: 'no-resume-command' }
+  return { ok: true, cliId: spec.cliId, args: spec.args(session.id, model) }
+}
+
+/**
+ * 从一条会话「分叉」：拿同一份历史，起一个**全新的 session id** 继续对话，
+ * 原会话不动。拦截条件与 planResume 相同（子代理、空 id），但参数表换成
+ * FORK_SPECS —— 没实测过分叉命令的 agent 返回 `no-fork-support`，UI 据此
+ * 不给按钮。参数只挑了分叉真正用得到的三个字段：完整的 HistorySession
+ * 也能直接传进来，但侧栏的 SessionEntry 拼个三字段对象就够了。
+ */
+export function planFork(
+  session: Pick<HistorySession, 'agent' | 'id' | 'subagent'>,
+  model?: string
+): ForkPlan {
+  if (session.subagent) return { ok: false, blocker: 'subagent' }
+  if (!session.id.trim()) return { ok: false, blocker: 'no-session-id' }
+  const spec = FORK_SPECS[session.agent]
+  if (!spec) return { ok: false, blocker: 'no-fork-support' }
   return { ok: true, cliId: spec.cliId, args: spec.args(session.id, model) }
 }
 

@@ -22,8 +22,8 @@ import HomePage from './HomePage'
 import SettingsPage, { type SettingsCategory } from './SettingsPage'
 import DshPage from './DshPage'
 import SessionHistoryPage from './SessionHistoryPage'
-import { formatArgs, planResume } from '../../shared/session-resume'
-import type { HistorySession } from '../../shared/session-history'
+import { formatArgs, planFork, planResume } from '../../shared/session-resume'
+import type { AgentId, HistorySession } from '../../shared/session-history'
 import UsagePage from './UsagePage'
 import NewSessionFlow from './NewSessionFlow'
 import CloseSessionDialog from './CloseSessionDialog'
@@ -104,6 +104,17 @@ interface PendingCliLaunch {
 interface PendingBridgeLaunch {
   requestId: string
   previousPage: PageId
+}
+
+/**
+ * 侧栏 SessionEntry.adapterId（CLI definition 的 adapterId）→ 分叉判断用的
+ * AgentId。claude 的 definition adapterId 是 `claude-code`，不是 AgentId 里的
+ * `claude`，不映射就会静默漏掉所有 Claude 会话；grok 同名。codex 能恢复但
+ * 实测不支持 `--fork-session`，不在这张表里（铁律见 shared/session-resume.ts）。
+ */
+const FORK_ADAPTER_AGENTS: Partial<Record<string, AgentId>> = {
+  'claude-code': 'claude',
+  grok: 'grok'
 }
 
 export default function AppShell() {
@@ -760,6 +771,72 @@ export default function AppShell() {
     [launchCli, strings]
   )
 
+  /**
+   * 从侧栏把一场会话「分叉」继续：同一份历史，全新的 session id，原会话不动。
+   *
+   * 和 resumeSession 一样复用 launchCli 的整条链路 —— 分叉也不过是一个
+   * 「参数里写着 `--resume <id> --fork-session`、目录沿用原会话」的新会话。
+   * 入口是侧栏右键菜单，只有 claude / grok 且已经观察到会话 id 的场次才
+   * 露出这项（Sidebar.canFork），所以这里的 blocker 沿用 cloneSession /
+   * createChildTerminal 同款的静默返回：按钮不该出现的地方点了也点不到。
+   *
+   * cwd 取该会话终端的目录。空 cwd 不交给 resolveWorkspace（它会把空工作区
+   * 解析成 Home，理由见 resumeSession 的注释）；目录失效时退到「让你选一个」，
+   * 参数预填好、旧路径摆在输入框里让人过一眼。
+   */
+  const forkSession = useCallback(
+    (session: SessionEntry): void => {
+      if (session.kind === 'dsh') return
+      const adapterSessionId = session.adapterSessionId?.trim()
+      if (!adapterSessionId) return
+      const agent = FORK_ADAPTER_AGENTS[session.adapterId]
+      if (!agent) return
+      const plan = planFork({ agent, id: adapterSessionId, subagent: false })
+      if (!plan.ok) return
+      const option =
+        cliReport?.launchable.find(
+          (candidate) => candidate.definition.id === plan.cliId
+        ) ?? null
+      if (!option || option.installations.length === 0) return
+      const installation = option.installations[0]
+
+      // ⚠️ 终端没了/目录拿不到时宁可不动作，也不静默落错地方（同上）。
+      const cwd = useTerminalsStore
+        .getState()
+        .terminals.find((terminal) => terminal.id === session.terminalId)?.cwd
+      if (!cwd?.trim()) return
+
+      const askForWorkspace = (): void => {
+        setNewSessionIntent({
+          kind: 'cli',
+          option,
+          args: formatArgs(plan.args),
+          skipApproval: false,
+          // 摆出旧路径既是信息（原来是跑在哪儿的），也逼用户主动改。
+          workspace: cwd,
+          notice: strings.sessionHistory.resumeNoCwd
+        })
+        setNewSessionOpen(true)
+      }
+
+      void window.cliApi
+        .resolveWorkspace(installation.id, cwd)
+        .then((workspace) =>
+          launchCli({
+            option,
+            installationId: installation.id,
+            name:
+              session.name.trim().slice(0, 60) || option.definition.displayName,
+            workspace,
+            args: formatArgs(plan.args),
+            skipApproval: false
+          })
+        )
+        .catch(() => askForWorkspace())
+    },
+    [cliReport, launchCli, strings]
+  )
+
   // 主进程同时持有 PTY 与 Agent projection。renderer reload 时先订阅
   // 增量，再恢复稳定 terminalId 和展示投影。没有可恢复 PTY 时保持
   // 真正的零实例空态；只有用户明确点击入口才创建进程。
@@ -1100,6 +1177,7 @@ export default function AppShell() {
                 onCollapse={() => setNavMode('rail')}
                 onRenameSession={renameSession}
                 onCloneSession={cloneSession}
+                onForkSession={forkSession}
                 onCreateChildTerminal={(session) => {
                   void createChildTerminal(session)
                 }}

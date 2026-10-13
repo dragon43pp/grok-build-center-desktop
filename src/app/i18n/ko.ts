@@ -44,6 +44,7 @@ export const ko = {
     sessionActions: '세션 작업',
     createChildTerminal: '하위 터미널 만들기',
     cloneSession: '세션 복제',
+    forkSession: '세션 포크(분기하여 계속)',
     childTerminals: '하위 터미널 펼치기 또는 접기',
     renameSession: '이름 바꾸기',
     sessionNameRequired: '세션 이름을 입력하세요'

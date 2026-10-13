@@ -44,6 +44,7 @@ export const en = {
     sessionActions: 'Session actions',
     createChildTerminal: 'New child terminal',
     cloneSession: 'Clone session',
+    forkSession: 'Fork session (branch from here)',
     childTerminals: 'Expand or collapse child terminals',
     renameSession: 'Rename',
     sessionNameRequired: 'Session name is required'

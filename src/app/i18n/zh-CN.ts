@@ -48,6 +48,7 @@ export const zhCN = {
     sessionActions: '会话操作',
     createChildTerminal: '新建子终端',
     cloneSession: '克隆会话',
+    forkSession: 'Fork 会话（分支继续）',
     childTerminals: '展开或收起子终端',
     renameSession: '重命名',
     sessionNameRequired: '会话名称不能为空'

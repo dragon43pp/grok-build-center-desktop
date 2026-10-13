@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Copy,
   Ellipsis,
+  GitFork,
   Home,
   PanelLeftClose,
   Pencil,
@@ -39,6 +40,7 @@ interface SidebarProps {
   onCollapse: () => void
   onRenameSession: (sessionId: string, name: string) => void
   onCloneSession: (session: SessionEntry) => void
+  onForkSession: (session: SessionEntry) => void
   onCreateChildTerminal: (session: SessionEntry) => void
   onCloseSession: (session: SessionEntry) => void
   onCloseTerminal: (terminalId: string) => void
@@ -62,6 +64,19 @@ const navButtonClass = (active: boolean): string =>
       : 'text-text-muted hover:bg-surface-hover hover:text-text-secondary'
   ].join(' ')
 
+/**
+ * 谁有资格看到「Fork 会话」菜单项。铁律（shared/session-resume.ts 文件头）：
+ * 只在 `--fork-session` 本机实测过的 CLI 才给按钮 —— 2026-10-13 实测 claude
+ * 与 grok 支持、codex 明确不支持、其余未实测。这里的 key 是 CLI definition 的
+ * adapterId（claude 是 `claude-code`，grok 同名）；另外没有 adapterSessionId
+ * 的场次也不给（还没观察到会话 id，分叉无从谈起）。
+ */
+const FORKABLE_ADAPTER_IDS = new Set(['claude-code', 'grok'])
+
+const canFork = (session: SessionEntry): boolean =>
+  FORKABLE_ADAPTER_IDS.has(session.adapterId) &&
+  Boolean(session.adapterSessionId?.trim())
+
 export default function Sidebar({
   pageId,
   sessions,
@@ -73,6 +88,7 @@ export default function Sidebar({
   onCollapse,
   onRenameSession,
   onCloneSession,
+  onForkSession,
   onCreateChildTerminal,
   onCloseSession,
   onCloseTerminal
@@ -559,6 +575,21 @@ export default function Sidebar({
                 <Copy className="size-3" strokeWidth={1.75} />
                 {strings.navigation.cloneSession}
               </button>
+              {canFork(menuSession) && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="sidebar-session-fork"
+                  onClick={() => {
+                    setSessionMenu(null)
+                    onForkSession(menuSession)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  <GitFork className="size-3" strokeWidth={1.75} />
+                  {strings.navigation.forkSession}
+                </button>
+              )}
             </>
           )}
           <button
