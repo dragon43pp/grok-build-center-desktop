@@ -45,6 +45,11 @@ export const ko = {
     createChildTerminal: '하위 터미널 만들기',
     cloneSession: '세션 복제',
     forkSession: '세션 포크(분기하여 계속)',
+    forkSessionGit: '세션 포크(git worktree 포함)',
+    forkWorktreeReady: (dir: string, branch: string) =>
+      `worktree 생성됨: ${dir} · 브랜치 ${branch}. 현재 HEAD 기준이며 커밋하지 않은 변경 사항은 가져오지 않습니다. 확인하면 포크 디렉터리에서 시작합니다.`,
+    forkWorktreeFailed: (reason: string) =>
+      `worktree를 만들지 못했습니다: ${reason}. 취소하거나, 확인하면 원래 디렉터리에서 포크합니다.`,
     childTerminals: '하위 터미널 펼치기 또는 접기',
     renameSession: '이름 바꾸기',
     sessionNameRequired: '세션 이름을 입력하세요'

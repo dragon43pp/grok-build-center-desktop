@@ -49,6 +49,11 @@ export const zhCN = {
     createChildTerminal: '新建子终端',
     cloneSession: '克隆会话',
     forkSession: 'Fork 会话（分支继续）',
+    forkSessionGit: 'Fork 会话（连代码分叉）',
+    forkWorktreeReady: (dir: string, branch: string) =>
+      `worktree 已就绪：${dir} · 分支 ${branch}。基于当前 HEAD，未提交的改动不会带过去；确认后就在分叉目录里启动。`,
+    forkWorktreeFailed: (reason: string) =>
+      `没能创建 worktree：${reason}。可以先取消，或确认后按原目录分叉。`,
     childTerminals: '展开或收起子终端',
     renameSession: '重命名',
     sessionNameRequired: '会话名称不能为空'

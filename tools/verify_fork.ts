@@ -20,12 +20,16 @@
  *      复用 withModel，不该被 fork 的 base 参数挤掉。
  *   E. 预填文本可逆 —— fork 参数会预填进 NewSessionFlow 让人过一眼，
  *      `formatArgs` 摆出来的文本必须能被 `parseCommandLine` 解析回同一 argv。
+ *   F. worktree 命名 —— 「连代码分叉」的目录/分支命名（planWorktreeFork）：
+ *      时间戳格式、目录与分支同构、同一秒冲突时 `-2`/`-3` 递增且分支同步
+ *      加后缀（否则 `worktree add -b` 会撞上同名分支直接失败）。
  *
  * 只读：不启动任何 CLI、不碰任何会话文件，纯内存判卷。
  *
  *   node tools/_verify_fork.mjs
  */
 import { planFork, planResume, formatArgs } from '../shared/session-resume'
+import { planWorktreeFork, worktreeTimestamp } from '../electron/worktree-fork'
 import { AGENT_IDS, type AgentId, type HistorySession } from '../shared/session-history'
 import { parseCommandLine } from '../src/app/launchOptions'
 
@@ -177,6 +181,63 @@ console.log('\n===== E. formatArgs 往返 =====')
   const same = back.length === argv.length && back.every((token, i) => token === argv[i])
   console.log(`  ${same ? 'ok  ' : 'FAIL'}  ${JSON.stringify(argv)} -> "${text}" -> ${JSON.stringify(back)}`)
   check(same, 'fork 预填文本不可逆')
+}
+
+// ── F. worktree 命名（planWorktreeFork）──────────────────────────────────
+console.log('\n===== F. worktree 命名（连代码分叉）=====')
+{
+  // 2026-10-13 15:30:45 本地时间
+  const now = new Date(2026, 9, 13, 15, 30, 45)
+  const stamp = worktreeTimestamp(now)
+  check(/^\d{8}-\d{6}$/.test(stamp), `时间戳格式不对：${stamp}（要 yyyymmdd-HHmmss）`)
+  console.log(`  ok  时间戳 ${stamp}`)
+
+  const plan = planWorktreeFork('C:/code/my-repo', now)
+  check(
+    plan.dir === `C:/code/my-repo-fork-${stamp}`,
+    `目录命名不对：${plan.dir}`
+  )
+  check(
+    plan.branch === `asc-fork-${stamp}`,
+    `分支命名不对：${plan.branch}`
+  )
+  console.log(`  ok  ${plan.dir} + ${plan.branch}`)
+
+  // 同一秒第二次分叉：目录被占 → -2；分支同步加后缀，否则 worktree add -b
+  // 撞同名分支直接失败。
+  const twice = planWorktreeFork('C:/code/my-repo', now, (dir) =>
+    dir === `C:/code/my-repo-fork-${stamp}`
+  )
+  check(
+    twice.dir === `C:/code/my-repo-fork-${stamp}-2`,
+    `目录冲突没递增到 -2：${twice.dir}`
+  )
+  check(
+    twice.branch === `asc-fork-${stamp}-2`,
+    `分支没跟着目录加 -2 后缀：${twice.branch}`
+  )
+  console.log(`  ok  冲突一次 -> ${twice.dir} + ${twice.branch}`)
+
+  const thrice = planWorktreeFork(
+    'C:/code/my-repo',
+    now,
+    (dir) =>
+      dir === `C:/code/my-repo-fork-${stamp}` ||
+      dir === `C:/code/my-repo-fork-${stamp}-2`
+  )
+  check(
+    thrice.dir === `C:/code/my-repo-fork-${stamp}-3` &&
+      thrice.branch === `asc-fork-${stamp}-3`,
+    `冲突两次没递增到 -3：${JSON.stringify(thrice)}`
+  )
+  console.log(`  ok  冲突两次 -> ${thrice.dir} + ${thrice.branch}`)
+
+  // 干净路径（不冲突）绝不该带后缀。
+  const clean = planWorktreeFork('C:/code/my-repo', now, () => false)
+  check(
+    !clean.dir.endsWith('-2') && !clean.branch.endsWith('-2'),
+    '无冲突时不该有后缀'
+  )
 }
 
 // ── 收尾 ──────────────────────────────────────────────────────────────────

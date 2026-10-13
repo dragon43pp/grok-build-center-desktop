@@ -837,6 +837,66 @@ export default function AppShell() {
     [cliReport, launchCli, strings]
   )
 
+  /**
+   * 从侧栏把一场会话「连代码」分叉：先让主进程建 git worktree（新分支 +
+   * 新目录），再把 worktree 目录当工作区起分叉会话。原会话还在原目录里跑，
+   * 两边代码互不干扰；未提交的改动留在原目录（worktree 从 HEAD 创建），
+   * 所以成功/失败的说明都摆进新建面板的 notice，让人过一眼再启动。
+   *
+   * 准入与 forkSession 相同（菜单项只在 claude / grok 且已观察到会话 id 时
+   * 露出），所以 blocker 同样走静默返回；workspace 不是 git 仓库不预判，
+   * 点击后由主进程检查，失败把 stderr 摘要写进失败 notice，不启动。
+   * 终端丢失/空 cwd 静默返回，理由见 forkSession。
+   */
+  const forkSessionWithWorktree = useCallback(
+    (session: SessionEntry): void => {
+      if (session.kind === 'dsh') return
+      const adapterSessionId = session.adapterSessionId?.trim()
+      if (!adapterSessionId) return
+      const agent = FORK_ADAPTER_AGENTS[session.adapterId]
+      if (!agent) return
+      const plan = planFork({ agent, id: adapterSessionId, subagent: false })
+      if (!plan.ok) return
+      const option =
+        cliReport?.launchable.find(
+          (candidate) => candidate.definition.id === plan.cliId
+        ) ?? null
+      if (!option || option.installations.length === 0) return
+      const cwd = useTerminalsStore
+        .getState()
+        .terminals.find((terminal) => terminal.id === session.terminalId)?.cwd
+      if (!cwd?.trim()) return
+
+      void window.cliApi.forkWorktree(cwd).then((result) => {
+        if (result.ok) {
+          // worktree 已建好：参数预填、目录指到分叉目录，notice 把
+          // 路径/分支/「未提交改动不带过去」一次说完，确认后才启动。
+          setNewSessionIntent({
+            kind: 'cli',
+            option,
+            args: formatArgs(plan.args),
+            skipApproval: false,
+            workspace: result.dir,
+            notice: strings.navigation.forkWorktreeReady(result.dir, result.branch)
+          })
+        } else {
+          // 不是 git 仓库 / git 失败：把原因亮出来，面板仍按原目录预填
+          // —— 用户想退而求其次（普通分叉）就确认，不想就取消。
+          setNewSessionIntent({
+            kind: 'cli',
+            option,
+            args: formatArgs(plan.args),
+            skipApproval: false,
+            workspace: cwd,
+            notice: strings.navigation.forkWorktreeFailed(result.reason)
+          })
+        }
+        setNewSessionOpen(true)
+      })
+    },
+    [cliReport, strings]
+  )
+
   // 主进程同时持有 PTY 与 Agent projection。renderer reload 时先订阅
   // 增量，再恢复稳定 terminalId 和展示投影。没有可恢复 PTY 时保持
   // 真正的零实例空态；只有用户明确点击入口才创建进程。
@@ -1178,6 +1238,7 @@ export default function AppShell() {
                 onRenameSession={renameSession}
                 onCloneSession={cloneSession}
                 onForkSession={forkSession}
+                onForkSessionGit={forkSessionWithWorktree}
                 onCreateChildTerminal={(session) => {
                   void createChildTerminal(session)
                 }}

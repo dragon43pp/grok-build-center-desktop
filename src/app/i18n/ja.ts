@@ -45,6 +45,11 @@ export const ja = {
     createChildTerminal: '子ターミナルを作成',
     cloneSession: 'セッションを複製',
     forkSession: 'セッションをフォーク（分岐して続行）',
+    forkSessionGit: 'セッションをフォーク（git worktree ごと）',
+    forkWorktreeReady: (dir: string, branch: string) =>
+      `worktree を作成しました：${dir} · ブランチ ${branch}。現在の HEAD 基準のため、未コミットの変更は引き継がれません。確認するとフォーク先のディレクトリで起動します。`,
+    forkWorktreeFailed: (reason: string) =>
+      `worktree を作成できませんでした：${reason}。キャンセルするか、確認すると元のディレクトリでフォークします。`,
     childTerminals: '子ターミナルを展開または折りたたむ',
     renameSession: '名前を変更',
     sessionNameRequired: 'セッション名を入力してください'

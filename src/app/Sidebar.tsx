@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Copy,
   Ellipsis,
+  FolderGit2,
   GitFork,
   Home,
   PanelLeftClose,
@@ -41,6 +42,7 @@ interface SidebarProps {
   onRenameSession: (sessionId: string, name: string) => void
   onCloneSession: (session: SessionEntry) => void
   onForkSession: (session: SessionEntry) => void
+  onForkSessionGit: (session: SessionEntry) => void
   onCreateChildTerminal: (session: SessionEntry) => void
   onCloseSession: (session: SessionEntry) => void
   onCloseTerminal: (terminalId: string) => void
@@ -89,6 +91,7 @@ export default function Sidebar({
   onRenameSession,
   onCloneSession,
   onForkSession,
+  onForkSessionGit,
   onCreateChildTerminal,
   onCloseSession,
   onCloseTerminal
@@ -588,6 +591,21 @@ export default function Sidebar({
                 >
                   <GitFork className="size-3" strokeWidth={1.75} />
                   {strings.navigation.forkSession}
+                </button>
+              )}
+              {canFork(menuSession) && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="sidebar-session-fork-git"
+                  onClick={() => {
+                    setSessionMenu(null)
+                    onForkSessionGit(menuSession)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  <FolderGit2 className="size-3" strokeWidth={1.75} />
+                  {strings.navigation.forkSessionGit}
                 </button>
               )}
             </>

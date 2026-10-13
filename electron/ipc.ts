@@ -42,6 +42,7 @@ import {
   type SpawnOptions
 } from '../shared/ipc-contract'
 import { openDomesticWorkbuddy, openWorkbuddySession } from './sessions/open-workbuddy'
+import { forkWorktree } from './worktree-fork'
 import { AgentInvokeChannel } from '../shared/agent-events'
 import type { StartAgentSession } from '../shared/agent-events'
 import type { AgentSessionRuntime } from './agents/AgentSessionRuntime'
@@ -731,6 +732,14 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
   ipcMain.handle(CliInvokeChannel.PrepareLaunch, (_event, selection: unknown) =>
     ctx.cliDiscovery.prepareLaunch(selection as CliLaunchSelection)
   )
+  // 「连代码分叉」：从会话 cwd 的仓库建 git worktree。失败收进结果对象不抛，
+  // 渲染层拿 reason 展示给人看（不是 git 仓库 / git 不在 / add 失败都算失败）。
+  ipcMain.handle(CliInvokeChannel.ForkWorktree, (_event, cwd: unknown) => {
+    if (typeof cwd !== 'string' || cwd.trim().length === 0 || cwd.length > 32_768) {
+      return Promise.reject(new Error('Invalid worktree request'))
+    }
+    return forkWorktree(cwd)
+  })
 
   ipcMain.handle(AgentInvokeChannel.Start, (_event, input: unknown) => {
     if (!isStartAgentSessionShape(input)) {

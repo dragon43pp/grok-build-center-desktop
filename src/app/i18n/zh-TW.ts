@@ -45,6 +45,11 @@ export const zhTW = {
     createChildTerminal: '新增子終端',
     cloneSession: '複製工作階段',
     forkSession: 'Fork 工作階段（分支繼續）',
+    forkSessionGit: 'Fork 工作階段（連程式碼分叉）',
+    forkWorktreeReady: (dir: string, branch: string) =>
+      `worktree 已就緒：${dir} · 分支 ${branch}。基於目前 HEAD，未提交的變更不會帶過去；確認後就在分叉目錄裡啟動。`,
+    forkWorktreeFailed: (reason: string) =>
+      `無法建立 worktree：${reason}。可以先取消，或確認後按原目錄分叉。`,
     childTerminals: '展開或收合子終端',
     renameSession: '重新命名',
     sessionNameRequired: '工作階段名稱不能為空'

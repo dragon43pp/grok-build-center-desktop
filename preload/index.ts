@@ -303,7 +303,9 @@ const cliApi: CliApi = {
       workspace
     }),
   prepareLaunch: (selection: CliLaunchSelection) =>
-    ipcRenderer.invoke(CliInvokeChannel.PrepareLaunch, selection)
+    ipcRenderer.invoke(CliInvokeChannel.PrepareLaunch, selection),
+  forkWorktree: (cwd: string) =>
+    ipcRenderer.invoke(CliInvokeChannel.ForkWorktree, cwd)
 }
 
 const statsApi: StatsApi = {

@@ -45,6 +45,11 @@ export const en = {
     createChildTerminal: 'New child terminal',
     cloneSession: 'Clone session',
     forkSession: 'Fork session (branch from here)',
+    forkSessionGit: 'Fork session (with a git worktree)',
+    forkWorktreeReady: (dir: string, branch: string) =>
+      `Worktree ready: ${dir} · branch ${branch}. Based on the current HEAD — uncommitted changes are not carried over. Confirm to launch in the forked directory.`,
+    forkWorktreeFailed: (reason: string) =>
+      `Could not create the worktree: ${reason}. You can cancel, or confirm to fork in the original directory.`,
     childTerminals: 'Expand or collapse child terminals',
     renameSession: 'Rename',
     sessionNameRequired: 'Session name is required'

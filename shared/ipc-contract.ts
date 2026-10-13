@@ -298,7 +298,8 @@ export const ShellInvokeChannel = {
 export const CliInvokeChannel = {
   Scan: 'cli:scan',
   PrepareLaunch: 'cli:prepare-launch',
-  ResolveWorkspace: 'cli:resolve-workspace'
+  ResolveWorkspace: 'cli:resolve-workspace',
+  ForkWorktree: 'cli:fork-worktree'
 } as const
 
 /** M5.c: real persistence behind stats/history; renderer reports lifecycle events. */
@@ -823,11 +824,33 @@ export interface ShellApi {
   listAvailable: () => Promise<ShellOption[]>
 }
 
+/**
+ * 「连代码分叉」的结果。失败不抛错，收进 reason（stderr 摘要）——
+ * 渲染层只认结果对象，和 sessionsApi.trash 同一风格。
+ */
+export interface ForkWorktreeOk {
+  ok: true
+  /** 新 worktree 的绝对路径，启动分叉会话时当工作区用。 */
+  dir: string
+  /** 新分支名，`asc-fork-<时间戳>`。 */
+  branch: string
+}
+
+export interface ForkWorktreeFail {
+  ok: false
+  /** git 的 stderr 摘要（不是 git 仓库、git 不在、worktree add 失败…）。 */
+  reason: string
+}
+
+export type ForkWorktreeResult = ForkWorktreeOk | ForkWorktreeFail
+
 export interface CliApi {
   scan: (force?: boolean) => Promise<CliScanReport>
   /** Returns a validated explicit workspace, or the selected runtime's Home. */
   resolveWorkspace: (installationId: string, workspace: string) => Promise<string>
   prepareLaunch: (selection: CliLaunchSelection) => Promise<SpawnOptions>
+  /** 从会话 cwd 的仓库建一个 git worktree（新分支 + 新目录），供分叉会话当工作区。 */
+  forkWorktree: (cwd: string) => Promise<ForkWorktreeResult>
 }
 
 export interface StatsApi {
