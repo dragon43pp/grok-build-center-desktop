@@ -40,7 +40,7 @@
       'l.hero.cta.docs': 'Read the docs',
       'l.hero.kicker': 'Open source · Apache-2.0 · Windows / Linux / macOS',
       'l.hero.title': 'A center for every session: findable, resumable, reachable.',
-      'l.hero.cta.download': 'Download v1.0.6',
+      'l.hero.cta.download': 'Download v1.0.7',
       'l.hero.note':
         'The downloads are unsigned; the release page publishes SHA-256 for every asset. Your terminals stay exactly as they are — ASC reads event streams, not your screen.',
       'l.pain.title': 'Does this sound familiar?',
@@ -86,7 +86,7 @@
         'The builds are unsigned; every release publishes SHA-256 so you can verify what you run. The whole product is Apache-2.0 on GitHub.',
       'l.dl.title': 'Download',
       'l.dl.lede':
-        'v1.0.6 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
+        'v1.0.7 for Windows, Linux and macOS. Download, run, and it finds the agents already on your machine — the first scan takes seconds, and nothing leaves your computer.',
       'l.dl.cta': 'Get the latest release',
       'l.foot.upstream':
         'Early prototype from UniRound-Tec/hrack (Apache-2.0); Agent Session Center is an independently maintained hard fork — see NOTICE.',
@@ -225,7 +225,7 @@
       'l.hero.cta.docs': '查看文档',
       'l.hero.kicker': '开源 · Apache-2.0 · Windows / Linux / macOS',
       'l.hero.title': '找得到、能恢复、能远程连接每场会话的管理中心',
-      'l.hero.cta.download': '下载 v1.0.6',
+      'l.hero.cta.download': '下载 v1.0.7',
       'l.hero.note':
         '下载包未签名，Release 页公布每个资产的 SHA-256。你的终端原样不动 —— ASC 读的是事件流，不是你的屏幕。',
       'l.pain.title': '这些场景眼熟吗？',
@@ -271,7 +271,7 @@
         '构建未签名；每个 Release 公布 SHA-256，跑什么自己核得清。整个产品在 GitHub 上，Apache-2.0。',
       'l.dl.title': '下载',
       'l.dl.lede':
-        'v1.0.6，Windows、Linux、macOS。下载即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，数据不离开你的电脑。',
+        'v1.0.7，Windows、Linux、macOS。下载即用，它会自己找到机器上已有的 agent —— 首次扫描几秒钟，数据不离开你的电脑。',
       'l.dl.cta': '获取最新版本',
       'l.foot.upstream':
         '早期原型源自 UniRound-Tec/hrack（Apache-2.0）；Agent Session Center 是独立维护的硬分叉，见 NOTICE。',

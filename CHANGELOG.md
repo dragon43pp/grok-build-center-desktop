@@ -8,6 +8,36 @@
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-10-13
+
+这一版给侧栏会话加了会话分叉（Fork），一条对话可以从任意节点复制出另一条继续聊。
+
+### 新增
+
+- **Fork 会话（分支继续）。** 侧栏会话右键新增「Fork 会话（分支继续）」，把整段对话上下文复制成一条全新会话接着聊，原会话原样保留。基于 CLI 原生 `--fork-session` 能力，当前支持 Claude Code 与 Grok Build。
+- **Fork 会话（连代码分叉）。** 分叉对话的同时自动创建 git worktree：仓库旁的兄弟目录 `<仓库根>-fork-<时间戳>` 配新分支 `asc-fork-<时间戳>`，分出来的会话在独立目录里改代码，两条线互不干扰。worktree 基于当前 HEAD 创建，未提交的改动不会带过去。
+
+### 说明
+
+- 未实测 fork 能力的 agent（Codex CLI、OpenCode、Kimi Code、Pi、Antigravity）不显示分叉入口。
+- 本版本不带代码签名。安装包体积以 CI 产物为准，这里不写字节数。
+
+---
+
+### English
+
+This release adds session fork to the sidebar context menu, so a conversation can branch into a new one at any point.
+
+### Added
+
+- **Fork session (branch from here).** Right-click any session in the sidebar to copy its full conversation context into a brand-new session; the original session stays untouched. Built on the native `--fork-session` flag, available for Claude Code and Grok Build.
+- **Fork session (with git worktree).** Forking can also create a git worktree automatically: a sibling directory `<repo-root>-fork-<timestamp>` with a new branch `asc-fork-<timestamp>`, so the forked session edits code in its own directory and the two lines never interfere. The worktree is created from the current HEAD; uncommitted changes are not carried over.
+
+### Notes
+
+- Agents whose fork support has not been verified (Codex CLI, OpenCode, Kimi Code, Pi, Antigravity) do not show the fork entry.
+- This release is not code-signed. Installer sizes come from the CI artifacts; this entry does not quote bytes.
+
 ## [1.0.6] - 2026-10-12
 
 这一版让多台电脑共用一个飞书机器人。电脑用名字区分，会话只在拥有文件的那台打开。
