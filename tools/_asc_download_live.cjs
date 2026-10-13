@@ -1,10 +1,11 @@
 /* Live check of the trimmed download page: two cards, Windows and macOS only.
-   Renders the real domains rather than the built files, so a stale deploy fails here. */
+   Renders the real domains rather than the built files, so a stale deploy fails here.
+   Override the origins with ASC_SITE_ZH / ASC_SITE_EN to check a local build. */
 const { chromium } = require('playwright')
 
 const SITES = [
-  { name: 'zh', origin: 'https://asc.chupian.cloud', expectMacLabel: 'Apple 芯片', expectMeta: '支持 Windows 和 macOS' },
-  { name: 'en', origin: 'https://asc-en.chupian.cloud', expectMacLabel: 'Apple silicon', expectMeta: 'for Windows and macOS' }
+  { name: 'zh', origin: process.env.ASC_SITE_ZH || 'https://asc.chupian.cloud', expectMacLabel: 'Apple 芯片', expectMeta: '支持 Windows 和 macOS' },
+  { name: 'en', origin: process.env.ASC_SITE_EN || 'https://asc-en.chupian.cloud', expectMacLabel: 'Apple silicon', expectMeta: 'for Windows and macOS' }
 ]
 const FORBIDDEN = ['linux-x64', 'AppImage', '.deb', 'macos-x64', 'Ubuntu', 'Debian', 'sha256sum']
 
@@ -39,14 +40,14 @@ function check(label, ok, detail) {
 
     check('exactly two cards', cards.length === 2, String(cards.length))
     const files = cards.map(c => c.file.trim())
-    check('card 1 is the Windows installer', files[0] === 'AgentSessionCenter-Setup-1.0.6.exe', files[0])
-    check('card 2 is the arm64 disk image', files[1] === 'AgentSessionCenter-1.0.6-macos-arm64.dmg', files[1])
+    check('card 1 is the Windows installer', files[0] === 'AgentSessionCenter-Setup-1.0.7.exe', files[0])
+    check('card 2 is the arm64 disk image', files[1] === 'AgentSessionCenter-1.0.7-macos-arm64.dmg', files[1])
     check('Windows size', cards[0] && cards[0].size.trim() === '81.80 MiB', cards[0] && cards[0].size.trim())
     check('macOS size', cards[1] && cards[1].size.trim() === '107.54 MiB', cards[1] && cards[1].size.trim())
-    check('Windows hash', cards[0] && cards[0].hash.trim() === 'e6129ce05759046e6f0f753b2d2347fca14fd15bff7162346d5817d95d463a5a')
-    check('macOS hash', cards[1] && cards[1].hash.trim() === 'a68610e83d456bd7019d9b6253d0ebd77a41d430ddb539dbd5c13f8438747fe6')
-    check('Windows download + sidecar links', cards[0] && cards[0].href === '/downloads/AgentSessionCenter-Setup-1.0.6.exe' && cards[0].shaHref === '/downloads/AgentSessionCenter-Setup-1.0.6.exe.sha256')
-    check('macOS download + sidecar links', cards[1] && cards[1].href === '/downloads/AgentSessionCenter-1.0.6-macos-arm64.dmg' && cards[1].shaHref === '/downloads/AgentSessionCenter-1.0.6-macos-arm64.dmg.sha256')
+    check('Windows hash', cards[0] && cards[0].hash.trim() === 'c14492785f2cb0fca641e3070aa60a6f967732b81f4ad7272d8783778cdd42fb')
+    check('macOS hash', cards[1] && cards[1].hash.trim() === '60a5055b5c88f3c38209a545d3eead36adc776ae94ae19733b5c76b4eb8c0be6')
+    check('Windows download + sidecar links', cards[0] && cards[0].href === '/downloads/AgentSessionCenter-Setup-1.0.7.exe' && cards[0].shaHref === '/downloads/AgentSessionCenter-Setup-1.0.7.exe.sha256')
+    check('macOS download + sidecar links', cards[1] && cards[1].href === '/downloads/AgentSessionCenter-1.0.7-macos-arm64.dmg' && cards[1].shaHref === '/downloads/AgentSessionCenter-1.0.7-macos-arm64.dmg.sha256')
     check('macOS card labelled for Apple silicon', cards[1] && cards[1].label.indexOf(site.expectMacLabel) !== -1, cards[1] && cards[1].label.trim())
 
     const body = await page.textContent('body')
