@@ -39,26 +39,32 @@ export function worktreeTimestamp(now: Date): string {
 
 /**
  * 命名规则：目录 `<repoRoot>-fork-<时间戳>`（仓库的兄弟目录），分支
- * `asc-fork-<时间戳>`。同一秒内分叉第二次时，目录已存在 —— 时间戳后加
- * `-2`、`-3` 递增；分支跟着加同一个后缀，否则 `worktree add -b` 会撞上
- * 已存在的同名分支直接失败。`dirExists` 注入而不是内部 stat，纯函数才可判卷。
+ * `asc-fork-<时间戳>`（asc-fork- 前缀避开 basename 里的非法字符）。同一秒内
+ * 分叉第二次时，目录或分支任一被占 —— 时间戳后加 `-2`、`-3` 递增，目录与
+ * 分支**同步**加后缀（分支是全局命名空间：从 worktree 里再 fork 时
+ * `rev-parse --show-toplevel` 返回的是 worktree 自己的路径，目录名不会撞，
+ * 但 `worktree add -b` 会撞上已存在的同名分支直接失败，所以两者都要查）。
+ * `dirExists` / `branchExists` 注入而不是内部 stat/exec，纯函数才可判卷。
  */
 export function planWorktreeFork(
   repoRoot: string,
   now: Date,
-  dirExists: (dir: string) => boolean = () => false
+  dirExists: (dir: string) => boolean = () => false,
+  branchExists: (branch: string) => boolean = () => false
 ): WorktreeForkPlan {
   const stamp = worktreeTimestamp(now)
   const baseDir = `${repoRoot}-fork-${stamp}`
+  const baseBranch = `asc-fork-${stamp}`
   // 后缀从 -2 起跳（-1 是给人看的名字里不该出现的数）：第一次冲突就是
   // `<base>-2`，第二次 `-3`，与「在时间戳后加 -2、-3 递增」的约定一致。
   let suffix = 1
   let dir = baseDir
-  while (dirExists(dir)) {
+  let branch = baseBranch
+  while (dirExists(dir) || branchExists(branch)) {
     suffix += 1
     dir = `${baseDir}-${suffix}`
+    branch = `${baseBranch}-${suffix}`
   }
-  const branch = suffix > 1 ? `asc-fork-${stamp}-${suffix}` : `asc-fork-${stamp}`
   return { dir, branch }
 }
 
@@ -101,7 +107,34 @@ export async function forkWorktree(cwd: string): Promise<ForkWorktreeResult> {
     }
   }
 
-  const { dir, branch } = planWorktreeFork(repoRoot, new Date(), existsSync)
+  // 分支是全局命名空间，目录查 existsSync 不够：从 worktree 里再 fork 时
+  // 目录名必然不同、分支却可能同名（上一秒刚 fork 过）。起名前把已占的
+  // asc-fork-* 一次拉出来当谓词用；查询失败就当没占 —— 真撞上时
+  // `worktree add -b` 的错误路径会接住。
+  let takenBranches = new Set<string>()
+  try {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['-C', cwd, 'branch', '--list', 'asc-fork-*'],
+      { timeout: 15_000, windowsHide: true }
+    )
+    // 行首的 `* `/`+ ` 是「当前/另一 worktree 检出」标记，不是名字的一部分。
+    takenBranches = new Set(
+      stdout
+        .split('\n')
+        .map((line) => line.trim().replace(/^[*+]\s+/, ''))
+        .filter((line) => line.length > 0)
+    )
+  } catch {
+    // 当作没有同名分支，交给下面的 add 失败路径兜底。
+  }
+
+  const { dir, branch } = planWorktreeFork(
+    repoRoot,
+    new Date(),
+    existsSync,
+    (name) => takenBranches.has(name)
+  )
   try {
     await execFileAsync('git', ['-C', cwd, 'worktree', 'add', dir, '-b', branch], {
       timeout: 60_000,

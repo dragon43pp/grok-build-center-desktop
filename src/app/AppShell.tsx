@@ -867,32 +867,45 @@ export default function AppShell() {
         .terminals.find((terminal) => terminal.id === session.terminalId)?.cwd
       if (!cwd?.trim()) return
 
-      void window.cliApi.forkWorktree(cwd).then((result) => {
-        if (result.ok) {
-          // worktree 已建好：参数预填、目录指到分叉目录，notice 把
-          // 路径/分支/「未提交改动不带过去」一次说完，确认后才启动。
-          setNewSessionIntent({
-            kind: 'cli',
-            option,
-            args: formatArgs(plan.args),
-            skipApproval: false,
-            workspace: result.dir,
-            notice: strings.navigation.forkWorktreeReady(result.dir, result.branch)
-          })
-        } else {
-          // 不是 git 仓库 / git 失败：把原因亮出来，面板仍按原目录预填
-          // —— 用户想退而求其次（普通分叉）就确认，不想就取消。
-          setNewSessionIntent({
-            kind: 'cli',
-            option,
-            args: formatArgs(plan.args),
-            skipApproval: false,
-            workspace: cwd,
-            notice: strings.navigation.forkWorktreeFailed(result.reason)
-          })
-        }
+      // 失败统一走这里：面板仍按原目录预填，notice 亮出原因 —— 用户想退而
+      // 求其次（普通分叉）就确认，不想就取消。
+      const showFailure = (reason: string): void => {
+        setNewSessionIntent({
+          kind: 'cli',
+          option,
+          args: formatArgs(plan.args),
+          skipApproval: false,
+          workspace: cwd,
+          notice: strings.navigation.forkWorktreeFailed(reason)
+        })
         setNewSessionOpen(true)
-      })
+      }
+
+      void window.cliApi
+        .forkWorktree(cwd)
+        .then((result) => {
+          if (result.ok) {
+            // worktree 已建好：参数预填、目录指到分叉目录，notice 把
+            // 路径/分支/「未提交改动不带过去」一次说完，确认后才启动。
+            setNewSessionIntent({
+              kind: 'cli',
+              option,
+              args: formatArgs(plan.args),
+              skipApproval: false,
+              workspace: result.dir,
+              notice: strings.navigation.forkWorktreeReady(result.dir, result.branch)
+            })
+            setNewSessionOpen(true)
+          } else {
+            showFailure(result.reason)
+          }
+        })
+        .catch((error: unknown) => {
+          // IPC 层对非法入参会 reject（上面的前置守卫让这条路几乎到不了，
+          // 但 reject 无人接就是未处理 rejection）。沿用一期 forkSession 的
+          // .catch() 惯例降级成失败 notice，不静默吞。
+          showFailure(error instanceof Error ? error.message : String(error))
+        })
     },
     [cliReport, strings]
   )

@@ -22,7 +22,8 @@
  *      `formatArgs` 摆出来的文本必须能被 `parseCommandLine` 解析回同一 argv。
  *   F. worktree 命名 —— 「连代码分叉」的目录/分支命名（planWorktreeFork）：
  *      时间戳格式、目录与分支同构、同一秒冲突时 `-2`/`-3` 递增且分支同步
- *      加后缀（否则 `worktree add -b` 会撞上同名分支直接失败）。
+ *      加后缀；目录**或分支**任一被占都要递增（分支是全局命名空间：从
+ *      worktree 里再 fork 时目录名不会撞、分支会）。
  *
  * 只读：不启动任何 CLI、不碰任何会话文件，纯内存判卷。
  *
@@ -238,6 +239,36 @@ console.log('\n===== F. worktree 命名（连代码分叉）=====')
     !clean.dir.endsWith('-2') && !clean.branch.endsWith('-2'),
     '无冲突时不该有后缀'
   )
+
+  // 从 worktree 里再 fork 的实证场景：目录空闲（worktree 自己的路径做 base，
+  // 名字必然不同）但**分支**被占 —— 分支是全局命名空间，同样要递增。
+  const branchTaken = planWorktreeFork(
+    'C:/code/other-place',
+    now,
+    () => false,
+    (name) => name === `asc-fork-${stamp}`
+  )
+  check(
+    branchTaken.dir === `C:/code/other-place-fork-${stamp}-2` &&
+      branchTaken.branch === `asc-fork-${stamp}-2`,
+    `目录空闲但分支被占时没递增到 -2：${JSON.stringify(branchTaken)}`
+  )
+  console.log(`  ok  分支被占 -> ${branchTaken.dir} + ${branchTaken.branch}`)
+
+  // 目录和分支**同时**被占只递增一次：一轮 while 同时挪两个名字，该是 -2
+  // 而不是把两次冲突叠成 -3。
+  const both = planWorktreeFork(
+    'C:/code/my-repo',
+    now,
+    (dir) => dir === `C:/code/my-repo-fork-${stamp}`,
+    (name) => name === `asc-fork-${stamp}`
+  )
+  check(
+    both.dir === `C:/code/my-repo-fork-${stamp}-2` &&
+      both.branch === `asc-fork-${stamp}-2`,
+    `目录与分支同时被占应同步到 -2：${JSON.stringify(both)}`
+  )
+  console.log(`  ok  双占用 -> ${both.dir} + ${both.branch}`)
 }
 
 // ── 收尾 ──────────────────────────────────────────────────────────────────
