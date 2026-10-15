@@ -11,6 +11,8 @@
  *   /打开            打开上次的国内 WorkBuddy 会话（不选模型、不投喂）
  *   /会话            现在开着的会话
  *   /发 <序号> <文字>  往开着的会话里投喂一句话
+ *   /问题            现在等你回答的任务问题
+ *   /答 <问题编号> <答案>  按编号作答，和命令行答的是同一题
  *   /帮助            用法
  *
  * 「手机上替它跑完一整场」还做不到也不急着做：resume 是在电脑上开标签页，
@@ -86,6 +88,13 @@ export interface FeishuRouterDeps {
    * 而不是往终端里投喂。
    */
   openDshSession?: (sessionId?: string) => Promise<{ ok: boolean; message: string }>
+  /** 现在等你回答的任务问题。 */
+  listTaskQuestions?: () => Promise<Array<{ id: string; prompt: string; choices: string[] }>>
+  /** 按问题编号作答。和 asc tasks answer 是同一条账本。 */
+  answerTaskQuestion?: (
+    questionId: string,
+    answer: string
+  ) => Promise<{ ok: true; alreadyAnswered: boolean; delivered: boolean } | null>
   /** 「恢复后自动投喂」的轮询节奏，判卷用小值。默认 3 秒一次、最多等 45 秒。 */
   pollIntervalMs?: number
   pollTimeoutMs?: number
@@ -124,6 +133,8 @@ export type RouterCommand =
   | { cmd: 'send'; n: number; text: string; computer?: string }
   | { cmd: 'open-workbuddy'; computer?: string }
   | { cmd: 'open-dsh'; computer?: string }
+  | { cmd: 'questions' }
+  | { cmd: 'answer'; questionId: string; answer: string }
   | { cmd: 'unknown' }
 
 export function parseCommand(rawText: string): RouterCommand {
@@ -159,6 +170,13 @@ export function parseCommand(rawText: string): RouterCommand {
       ...(named.computer ? { computer: named.computer } : {}),
       ...(body ? { text: body } : {})
     }
+  }
+  if (word === '问题' || word === 'questions') return { cmd: 'questions' }
+  if (word === '答' || word === 'answer') {
+    const questionId = tail[0]?.trim()
+    const answer = tail.slice(1).join(' ').trim()
+    if (!questionId || !answer) return { cmd: 'unknown' }
+    return { cmd: 'answer', questionId, answer }
   }
   if (word === '发' || word === 'send') {
     if (!named.n) return { cmd: 'unknown' }
@@ -301,7 +319,9 @@ function helpCard(): Record<string, unknown> {
             '**/打开 [电脑名]** —— 打开那台电脑上上次的国内 WorkBuddy 会话（不选模型，不自动发消息）',
             '**/dsh [电脑名]** —— 在那台电脑的 DSH 界面打开最近一场 DeepSeek Harness 会话',
             '**/会话 [电脑名]** —— 那台电脑上现在开着的会话',
-            '**/发 [电脑名] 序号 一句话** —— 往开着的会话里投喂一句话'
+            '**/发 [电脑名] 序号 一句话** —— 往开着的会话里投喂一句话',
+            '**/问题** —— 这台电脑上正在等你回答的任务问题',
+            '**/答 问题编号 答案** —— 按编号作答。批准写 approved，拒绝写 denied'
           ].join('\n')
         }
       },
@@ -1199,6 +1219,27 @@ export function createFeishuRouter(deps: FeishuRouterDeps): {
     }
   }
 
+  async function taskQuestionsText(): Promise<string> {
+    if (!deps.listTaskQuestions) return '这台电脑还不能列出任务问题。'
+    const rows = await deps.listTaskQuestions()
+    if (rows.length === 0) return '现在没有等你回答的问题。'
+    return rows
+      .slice(0, 8)
+      .map((row) => `${row.id}\n${truncate(row.prompt, 80)}`)
+      .join('\n\n')
+  }
+
+  async function answerTaskQuestionText(
+    questionId: string,
+    answer: string
+  ): Promise<string> {
+    if (!deps.answerTaskQuestion) return '这台电脑还不能按问题编号作答。'
+    const result = await deps.answerTaskQuestion(questionId, answer)
+    if (!result) return '这场会话已经不在，或者答案不在选项里。'
+    if (result.alreadyAnswered) return '这题已经答过，第一次的答案还在。'
+    return result.delivered ? '已记下，并送回这场会话。' : '已记下。送回会话时失败了。'
+  }
+
   return {
     async onMessage(message: FeishuInboundMessage): Promise<void> {
       try {
@@ -1223,6 +1264,15 @@ export function createFeishuRouter(deps: FeishuRouterDeps): {
             return
           case 'active':
             await sendActiveList(message.openId, message.messageId, command.computer)
+            return
+          case 'questions':
+            await sendText(message.openId, await taskQuestionsText())
+            return
+          case 'answer':
+            await sendText(
+              message.openId,
+              await answerTaskQuestionText(command.questionId, command.answer)
+            )
             return
           case 'open-workbuddy':
             await sendText(

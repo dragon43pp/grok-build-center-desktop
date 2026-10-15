@@ -24,6 +24,7 @@ import DshPage from './DshPage'
 import SessionHistoryPage from './SessionHistoryPage'
 import { formatArgs, planFork, planResume } from '../../shared/session-resume'
 import type { AgentId, HistorySession } from '../../shared/session-history'
+import type { SessionLedgerRow } from '../../shared/session-ledger'
 import UsagePage from './UsagePage'
 import NewSessionFlow from './NewSessionFlow'
 import CloseSessionDialog from './CloseSessionDialog'
@@ -152,6 +153,8 @@ export default function AppShell() {
   const [cliReport, setCliReport] = useState<CliScanReport | null>(null)
   const [cliScanning, setCliScanning] = useState(true)
   const [cliScanError, setCliScanError] = useState<string | null>(null)
+  const [relaunchRows, setRelaunchRows] = useState<SessionLedgerRow[]>([])
+  const [relaunchNotice, setRelaunchNotice] = useState<string | null>(null)
   const [dshRuntimeReport, setDshRuntimeReport] =
     useState<DshRuntimeScanReport | null>(null)
   const [dshRuntimeScanning, setDshRuntimeScanning] = useState(true)
@@ -223,6 +226,31 @@ export default function AppShell() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void window.agentApi.listLiveAttached().then((rows) => {
+      if (cancelled || rows.length === 0) return
+      const recoverable = rows
+        .filter((row) => row.hostPtyId && row.terminalId)
+        .map((row) => ({
+          ptyId: row.hostPtyId as string,
+          terminalId: row.terminalId as string,
+          kind: 'agent' as const,
+          name: row.name,
+          shellId: row.agentId,
+          cwd: row.cwd,
+          exited: false
+        }))
+      if (recoverable.length > 0) restoreTerminals(recoverable)
+    })
+    void window.agentApi.listResumeOnLaunch().then((rows) => {
+      if (!cancelled) setRelaunchRows(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [restoreTerminals])
 
   useEffect(() => {
     let cancelled = false
@@ -725,6 +753,11 @@ export default function AppShell() {
     async (session: HistorySession, option: CliOption): Promise<string | null> => {
       const plan = planResume(session)
       if (!plan.ok) return null
+      const probe = await window.agentApi.probeConversation(session.agent, session.id)
+      if (!probe.ok) {
+        setRelaunchNotice(strings.sessionHistory.relaunchMissingFile)
+        return null
+      }
       const installation = option.installations[0]
       if (!installation) return strings.sessionHistory.resumeBlockedUnverified
 
@@ -734,7 +767,7 @@ export default function AppShell() {
           kind: 'cli',
           option,
           args: formatArgs(plan.args),
-          skipApproval: false,
+          skipApproval: true,
           // ⚠️ 这里必须填**旧目录原值**，不能留空。`NewSessionFlow.openCli` 的
           // 兜底是 `initialWorkspace || lastWorkspace()`：留空会拿到「上次用过
           // 的目录」，那是个存在且合法的目录，用户直接点启动就在一个不相干的
@@ -765,10 +798,46 @@ export default function AppShell() {
         name: session.title.trim().slice(0, 60) || option.definition.displayName,
         workspace,
         args: formatArgs(plan.args),
-        skipApproval: false
+        skipApproval: true
       })
     },
     [launchCli, strings]
+  )
+
+  const relaunchLedgerRow = useCallback(
+    async (row: SessionLedgerRow): Promise<void> => {
+      if (!row.agentSessionKey) return
+      const probe = await window.agentApi.probeConversation(
+        row.agentId,
+        row.agentSessionKey
+      )
+      if (!probe.ok) {
+        await window.agentApi.dismissResume(row.id)
+        setRelaunchRows((current) => current.filter((item) => item.id !== row.id))
+        setRelaunchNotice(strings.sessionHistory.relaunchMissingFile)
+        return
+      }
+      const option =
+        cliReport?.launchable.find(
+          (candidate) =>
+            candidate.definition.adapterId === row.agentId ||
+            candidate.definition.id === row.agentId
+        ) ?? null
+      const installation =
+        option?.installations.find((item) => item.id === row.installationId) ??
+        option?.installations[0]
+      if (!option || !installation) return
+      setRelaunchRows((current) => current.filter((item) => item.id !== row.id))
+      await launchCli({
+        option,
+        installationId: installation.id,
+        name: row.name,
+        workspace: row.cwd,
+        args: formatArgs(row.args),
+        skipApproval: true
+      })
+    },
+    [cliReport, launchCli]
   )
 
   /**
@@ -1285,6 +1354,51 @@ export default function AppShell() {
 
   return (
     <div className="app-shell isolate relative flex h-full w-full select-none flex-col overflow-hidden">
+      {relaunchNotice ? (
+        <div className="relative z-20 mx-3 mt-2 rounded-xl border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)]">
+          {relaunchNotice}
+        </div>
+      ) : null}
+      {relaunchRows.length > 0 ? (
+        <div className="relative z-20 mx-3 mt-2 flex items-start justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-sm">
+          <div>
+            <div className="font-medium">{strings.sessionHistory.relaunchTitle}</div>
+            <div className="mt-1 text-[var(--muted)]">
+              {strings.sessionHistory.relaunchBody(relaunchRows.length)}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {relaunchRows.slice(0, 3).map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  className="rounded-lg border border-[var(--line)] px-2 py-1"
+                  onClick={() => void relaunchLedgerRow(row)}
+                >
+                  {strings.sessionHistory.relaunchOne} · {row.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-[var(--accent)] px-3 py-1 text-white"
+              onClick={() => {
+                for (const row of relaunchRows) void relaunchLedgerRow(row)
+              }}
+            >
+              {strings.sessionHistory.relaunchAll}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1 text-[var(--muted)]"
+              onClick={() => setRelaunchRows([])}
+            >
+              {strings.sessionHistory.relaunchDismiss}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {/* 环境渐变垫在全部镶边（标题栏/侧栏/圆角缺口）下面；内容面板不透明底色自然盖住自己的区域 */}
       <SidebarTint />
       <TitleBar

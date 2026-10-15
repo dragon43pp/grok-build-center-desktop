@@ -55,7 +55,9 @@ export class PiEventProjector {
               confidence: 'high'
             }
           },
-          fact
+          fact,
+          undefined,
+          fact.sessionId
         )
       ]
     }
@@ -253,12 +255,14 @@ export class PiEventProjector {
   private event(
     event: AdapterEvent,
     fact: PiNativeFact,
-    suffix?: string
+    suffix?: string,
+    agentSessionKey?: string
   ): AdapterEvent {
     return {
       ...event,
       nativeId: `pi:${fact.generation}:${fact.seq}${suffix ? `:${suffix}` : ''}`,
-      nativeType: fact.nativeType
+      nativeType: fact.nativeType,
+      ...(agentSessionKey ? { agentSessionKey } : {})
     }
   }
 

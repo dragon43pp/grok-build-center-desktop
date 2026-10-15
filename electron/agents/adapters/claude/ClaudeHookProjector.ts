@@ -53,9 +53,15 @@ function approvalCategory(
 function nativeEvent(
   event: AdapterEvent,
   nativeId: string,
-  nativeType: string
+  nativeType: string,
+  agentSessionKey?: string
 ): AdapterEvent {
-  return { ...event, nativeId, nativeType }
+  return {
+    ...event,
+    nativeId,
+    nativeType,
+    ...(agentSessionKey ? { agentSessionKey } : {})
+  }
 }
 
 /**
@@ -208,7 +214,8 @@ export class ClaudeHookProjector {
     events.push(nativeEvent(
       { kind: 'turn.started', payload: { turnId: this.turnId } },
       `${this.turnId}:started`,
-      nativeType
+      nativeType,
+      sessionId
     ))
     events.push(nativeEvent(
       { kind: 'thinking.started', payload: { turnId: this.turnId } },

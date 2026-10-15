@@ -74,7 +74,10 @@ function usage(): string {
     '  asc session questions <sessionId>',
     '  asc session answer <sessionId> <requestId> --json <payload>',
     '  asc session reject-question <sessionId> <requestId>',
-    '  asc session wait <sessionId> --until blocked|turn|exited'
+    '  asc session wait <sessionId> --until blocked|turn|exited',
+    '  asc tasks',
+    '  asc tasks questions',
+    '  asc tasks answer <questionId> <answer>'
   ].join('\n')
 }
 
@@ -159,6 +162,31 @@ export function parseAscCli(argv: readonly string[]): ParsedAscCli {
         ...(refresh ? { refresh: true } : {})
       }
     }
+  }
+
+  if (head === 'tasks') {
+    const command = args.shift() ?? 'list'
+    if (command === 'list' || command === 'questions') {
+      if (args.length > 0) throw new Error(`Unexpected arguments: ${args.join(' ')}`)
+      return {
+        kind: 'request',
+        method: command === 'list' ? 'tasks.list' : 'tasks.questions',
+        params: {}
+      }
+    }
+    if (command === 'answer') {
+      const questionId = args.shift()
+      const answer = args.join(' ').trim()
+      if (!questionId || !answer) {
+        throw new Error('tasks answer requires <questionId> <answer>')
+      }
+      return {
+        kind: 'request',
+        method: 'tasks.answer',
+        params: { questionId, answer }
+      }
+    }
+    throw new Error(`Unknown tasks command: ${command}\n${usage()}`)
   }
 
   if (head === 'session') {

@@ -31,6 +31,7 @@
     "e2e": "npm run ensure:dsh && npm run build && playwright test",
     "e2e:only": "playwright test",
     "asc": "electron ./out/main/index.js",
+    "check:session-ledger": "node node_modules/esbuild/bin/esbuild tools/session_ledger_check.ts --bundle --platform=node --format=esm --outfile=tools/_session_ledger_check.mjs --log-level=warning && node tools/_session_ledger_check.mjs",
     "check:feishu-router": "node node_modules/esbuild/bin/esbuild tools/feishu_router_check.ts --bundle --platform=node --format=esm --outfile=tools/_feishu_router_check.mjs --log-level=warning && node tools/_feishu_router_check.mjs"
   },
   "author": "fatedawn",

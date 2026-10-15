@@ -6,9 +6,15 @@ const MAX_REMEMBERED_CORRELATIONS = 10_000
 function nativeEvent(
   event: AdapterEvent,
   nativeId: string,
-  nativeType: string
+  nativeType: string,
+  agentSessionKey?: string
 ): AdapterEvent {
-  return { ...event, nativeId, nativeType }
+  return {
+    ...event,
+    nativeId,
+    nativeType,
+    ...(agentSessionKey ? { agentSessionKey } : {})
+  }
 }
 
 function toolKey(nativeSessionId: string, callId: string): string {
@@ -74,7 +80,8 @@ export class GrokHookProjector {
             }
           },
           `${fact.nativeSessionId}:session-started:${fact.source}`,
-          fact.nativeType
+          fact.nativeType,
+          fact.nativeSessionId
         )
       )
       return events

@@ -111,6 +111,13 @@ export const ko = {
     resuming: '시작 중…',
     resumeHint: '원래 디렉터리에서 이 세션을 계속합니다(같은 세션 id 유지)',
     resumeNoCwd: '원래 디렉터리가 없습니다. 계속할 디렉터리를 선택하세요',
+    relaunchTitle: '지난번에 닫을 때 세션이 남아 있었습니다',
+    relaunchBody: (count: number) =>
+      `${count}개는 대화 키를 저장했습니다. 원래 디렉터리와 인자로 다시 엽니다.`,
+    relaunchOne: '이 세션 이어가기',
+    relaunchAll: '모두 이어가기',
+    relaunchDismiss: '나중에',
+    relaunchMissingFile: '대화 파일이 없어서 키로 다시 열지 않았습니다.',
     resumeFailed: (reason: string) => `재개 실패: ${reason}`,
     resumeBlockedSubagent: '하위 에이전트 세션은 다른 세션에 속하므로 단독 재개는 의미가 없습니다',
     resumeBlockedNoId: '이 세션에는 사용할 수 있는 id가 없습니다',

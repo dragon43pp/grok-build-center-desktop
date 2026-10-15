@@ -6,7 +6,7 @@ import { createWindow } from './window'
 import { attachMainRendererRecovery } from './main-window-recovery'
 import { canReceiveIpc, installIpcFrameGate, safeSend, sendToEachWindow } from './safe-send'
 import { registerIpc, type IpcContext } from './ipc'
-import { PTYManager } from './pty/PTYManager'
+import { PtyHostClient } from './pty/PtyHostClient'
 import { EventLog } from './events/EventLog'
 import { loadMainPrefs, getMainPrefs } from './main-prefs'
 import { markQuitting, isQuitting } from './quitting'
@@ -41,6 +41,9 @@ import {
 import { registerFloatingRendererScheme } from './floating/FloatingRendererProtocol'
 import { AiCliDiscoveryService } from './ai-cli-discovery'
 import { AgentSessionRuntime } from './agents/AgentSessionRuntime'
+import { SessionLedger } from './sessions/SessionLedger'
+import { defaultSkillRoots, installAgentSkills } from './agents/installAgentSkill'
+import { TaskLedger } from './sessions/TaskLedger'
 import { ObserverRegistry } from './agents/ObserverRegistry'
 import { FixtureObserverAdapter } from './agents/adapters/fixture'
 import { ClaudeObserverAdapter } from './agents/adapters/claude/ClaudeObserverAdapter'
@@ -175,7 +178,11 @@ if (isPrimaryInstance) {
   })
 }
 
-const manager = new PTYManager()
+const manager = new PtyHostClient(
+  process.execPath,
+  join(__dirname, 'ptyHostMain.js'),
+  { ASC_PTY_HOST: '1' }
+)
 // 价目表缓存落在我们自己的 userData 下（`<userData>/pricing/models.json`），
 // 绝不写进用户的 CLI 目录。会话层本身不认识 electron，所以在这里注入路径。
 configurePricingCache(app.getPath('userData'))
@@ -213,16 +220,35 @@ observerRegistry.register(new PiObserverAdapter())
 observerRegistry.register(new KimiObserverAdapter())
 observerRegistry.register(new GrokObserverAdapter())
 observerRegistry.register(new FixtureObserverAdapter())
+let sessionLedger: SessionLedger | undefined
+let taskLedger: TaskLedger | undefined
+try {
+  sessionLedger = new SessionLedger(app.getPath('userData'))
+  taskLedger = new TaskLedger(app.getPath('userData'))
+} catch (error) {
+  console.error('[asc] session ledger unavailable:', error)
+}
+try {
+  installAgentSkills(defaultSkillRoots())
+} catch (error) {
+  console.error('[asc] agent skill install failed:', error)
+}
 const agentRuntime = new AgentSessionRuntime({
   pty: manager,
   discovery: cliDiscovery,
   history: eventLog,
   registry: observerRegistry,
   workspace: workspaceReader,
+  ledger: sessionLedger,
+  tasks: taskLedger,
   options: {
     runDirRoot: join(app.getPath('userData'), 'observer-runs'),
     broadcast: broadcastAgentChannel
   }
+})
+void agentRuntime.adoptLiveSessions().catch((error) => {
+  console.error('[asc] live session adopt failed:', error)
+  sessionLedger?.demoteStaleRunning()
 })
 // DSH host：只启动扫描到的本机 / WSL 安装；懒启动并随 app 退出回收。
 let dshSurfaceController: DshWebSurfaceController | null = null
@@ -301,9 +327,9 @@ const controlPlane = new OpenCodeControlPlane({
    * `PTYManager.write` 在找不到 pty 时是**静默 return** 的，所以存活性必须
    * 在这儿自己断言 —— 否则「写进了一个已经死掉的终端」会表现为成功。
    */
-  writeTerminal: (terminalId: string, data: string) => {
-    const ptyId = manager.ptyIdForTerminal(terminalId)
-    if (!ptyId || !manager.isRunning(ptyId)) return false
+  writeTerminal: async (terminalId: string, data: string) => {
+    const ptyId = await manager.ptyIdForTerminal(terminalId)
+    if (!ptyId || !(await manager.isRunning(ptyId))) return false
     try {
       manager.write(ptyId, data)
       return true
@@ -319,10 +345,10 @@ const controlPlane = new OpenCodeControlPlane({
    * 订阅者），所以它能当判据；如果哪天改成只有被人订阅才算，这里就会把所有会话
    * 永久判成没起来 —— 那时要换信号，不能放宽判据。
    */
-  terminalReady: (terminalId: string) => {
-    const ptyId = manager.ptyIdForTerminal(terminalId)
+  terminalReady: async (terminalId: string) => {
+    const ptyId = await manager.ptyIdForTerminal(terminalId)
     if (!ptyId) return false
-    return (manager.lastOutputAt(ptyId) ?? 0) > 0
+    return ((await manager.lastOutputAt(ptyId)) ?? 0) > 0
   },
   /**
    * 历史会话（只读）。走的是和会话历史页完全同一条扫描 —— 没有第二份实现，
@@ -333,7 +359,13 @@ const controlPlane = new OpenCodeControlPlane({
 })
 const bridgeServer = new BridgeServer({
   userDataDir: app.getPath('userData'),
-  plane: controlPlane
+  plane: controlPlane,
+  tasks: {
+    listTasks: () => agentRuntime.listTasks(),
+    listTaskQuestions: () => agentRuntime.listTaskQuestions(),
+    answerTaskQuestion: (questionId, answer, answeredBy) =>
+      agentRuntime.answerTaskQuestion(questionId, answer, answeredBy)
+  }
 })
 
 function completeBridgeLaunch(ack: BridgeLaunchAck): void {
@@ -462,6 +494,9 @@ const feishuRouter = createFeishuRouter({
   get fleet() {
     return feishu.fleetPort() ?? undefined
   },
+  listTaskQuestions: async () => agentRuntime.listTaskQuestions(),
+  answerTaskQuestion: (questionId, answer) =>
+    agentRuntime.answerTaskQuestion(questionId, answer, 'feishu'),
   openDshSession: async () => {
     // 和 WorkBuddy 一样单取 1 条：混在全部 agent 的前 300 里会被挤掉。
     const result = await controlPlane.handle('sessions.history', {
@@ -537,7 +572,7 @@ function prepareShutdown(): Promise<void> {
     // 飞书长连接要显式关：否则进程退出时 WS 还挂着，飞书那边会认为机器人还在线。
     await feishu.dispose()
     await bridgeServer.stop()
-    await agentRuntime.disposeAll()
+    await agentRuntime.disposeAll('stop')
     await hookIngress.dispose()
     dshProjector.stop()
     dshWire.dispose()
@@ -546,7 +581,7 @@ function prepareShutdown(): Promise<void> {
     await dshHost.dispose()
     floatingController?.dispose()
     workspaceReader.clear()
-    manager.killAll()
+    await manager.shutdown()
     unregisterGlobalShortcut()
     stopThemeWatcher()
   })()
@@ -716,8 +751,10 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
           // 窗口正在拆时隐藏 DSH 表面可以失败，恢复流程继续。
         }
       },
-      killPtyChildren: () => manager.killAll(),
-      disposeAgentSessions: () => agentRuntime.disposeAll(),
+      killPtyChildren: () => {
+        manager.killAll()
+      },
+      disposeAgentSessions: () => agentRuntime.disposeAll('stop'),
       onGaveUp: (summary) => {
         if (isQuitting() || process.env['ASC_E2E']) return
         const isZh = app.getLocale().startsWith('zh')

@@ -110,6 +110,13 @@ export const zhTW = {
     resuming: '啟動中…',
     resumeHint: '在原目錄接著這場工作階段繼續（原地續，沿用同一個工作階段 id）',
     resumeNoCwd: '原目錄已不存在，選一個目錄再繼續',
+    relaunchTitle: '上次退出時還有工作階段',
+    relaunchBody: (count: number) =>
+      `${count} 場已記下對話鑰匙。重進會按原目錄和原參數拉起。`,
+    relaunchOne: '繼續這場',
+    relaunchAll: '全部繼續',
+    relaunchDismiss: '先不繼續',
+    relaunchMissingFile: '這場對話檔案已經不在，沒有按鑰匙拉起。',
     resumeFailed: (reason: string) => `恢復失敗：${reason}`,
     resumeBlockedSubagent: '子代理工作階段屬於另一場工作階段，單獨恢復沒有意義',
     resumeBlockedNoId: '這場工作階段沒有可用的 id',

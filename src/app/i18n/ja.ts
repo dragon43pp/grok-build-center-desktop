@@ -110,6 +110,13 @@ export const ja = {
     resuming: '起動中…',
     resumeHint: '元のディレクトリでこのセッションを続行します（同 id のまま）',
     resumeNoCwd: '元のディレクトリが存在しません。続行先を選んでください',
+    relaunchTitle: '前回終了時にセッションが残っていました',
+    relaunchBody: (count: number) =>
+      `${count} 件は会話キーを保存済みです。元のディレクトリと引数で再開します。`,
+    relaunchOne: 'このセッションを続ける',
+    relaunchAll: 'すべて続ける',
+    relaunchDismiss: '今はしない',
+    relaunchMissingFile: '会話ファイルがないので、キーでは再開しませんでした。',
     resumeFailed: (reason: string) => `再開に失敗しました：${reason}`,
     resumeBlockedSubagent: 'サブエージェントのセッションは別のセッションに属するため、単独では再開できません',
     resumeBlockedNoId: 'このセッションには使用できる id がありません',

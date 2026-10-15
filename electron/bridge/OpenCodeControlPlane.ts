@@ -121,7 +121,7 @@ export interface OpenCodeControlPlaneDeps {
    * 还有人在打字。这个探针的价值只是「CLI 界面还没画出来时别打字」，
    * 实测约 6 秒就打开、且早于 `session.resume` 返回。
    */
-  terminalReady?(terminalId: string): boolean
+  terminalReady?(terminalId: string): boolean | Promise<boolean>
   /**
    * 往一个已经开着的终端里写字 —— 等价于替人在键盘上敲。
    * 返回 false 表示那个终端已经没了（`PTYManager.write` 找不到 pty 时是**静默**
@@ -130,7 +130,7 @@ export interface OpenCodeControlPlaneDeps {
    * 这是 grok/codex/claude 唯一的「继续对话」通道：它们是 TUI，没有 OpenCode
    * 那样的私有控制面。缺省时 `session.send` 对这类会话报 uncontrolled。
    */
-  writeTerminal?(terminalId: string, data: string): boolean
+  writeTerminal?(terminalId: string, data: string): boolean | Promise<boolean>
   now?: () => number
 }
 
@@ -710,9 +710,9 @@ export class OpenCodeControlPlane {
    * 这个信息比「干脆不列」有用得多。
    */
   async sessions(): Promise<BridgeSessionInfo[]> {
-    return this.deps.runtime
-      .listRecords()
-      .map((record) => this.toSessionInfo(record))
+    return Promise.all(
+      this.deps.runtime.listRecords().map((record) => this.toSessionInfo(record))
+    )
   }
 
   /**
@@ -911,7 +911,7 @@ export class OpenCodeControlPlane {
     }
     // 程序还没起来就别打字：界面都没画出来，打进去也没人接。
     // 缺省（实现方没接这个探针）时放行，不假装知道。
-    if (this.deps.terminalReady && !this.deps.terminalReady(record.terminalId)) {
+    if (this.deps.terminalReady && !(await this.deps.terminalReady(record.terminalId))) {
       throw BridgeError.notAllowed(
         `Terminal for session ${sessionId} has not produced any output yet; ` +
           'the CLI is still starting - retry in a moment'
@@ -1336,7 +1336,7 @@ export class OpenCodeControlPlane {
     return control
   }
 
-  private toSessionInfo(record: AgentSessionRecord): BridgeSessionInfo {
+  private async toSessionInfo(record: AgentSessionRecord): Promise<BridgeSessionInfo> {
     const controllable = Boolean(this.deps.runtime.observerControl(record.sessionId))
     return {
       sessionId: record.sessionId,
@@ -1357,7 +1357,7 @@ export class OpenCodeControlPlane {
       controllable,
       // 有控制面就无所谓「程序起来没」（OpenCode 走 HTTP，不看 TUI）；
       // 没有就得看终端有没有输出过。没接探针时按「能收」放行，不假装知道。
-      ready: controllable || this.deps.terminalReady?.(record.terminalId) !== false
+      ready: controllable || (await this.deps.terminalReady?.(record.terminalId)) !== false
     }
   }
 

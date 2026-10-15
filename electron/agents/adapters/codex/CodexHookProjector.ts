@@ -4,9 +4,15 @@ import type { CodexNativeFact } from './types'
 function nativeEvent(
   event: AdapterEvent,
   nativeId: string,
-  nativeType: string
+  nativeType: string,
+  agentSessionKey?: string
 ): AdapterEvent {
-  return { ...event, nativeId, nativeType }
+  return {
+    ...event,
+    nativeId,
+    nativeType,
+    ...(agentSessionKey ? { agentSessionKey } : {})
+  }
 }
 
 export class CodexHookProjector {
@@ -41,7 +47,8 @@ export class CodexHookProjector {
             }
           },
           `${fact.nativeSessionId}:session-started:${fact.source}`,
-          fact.nativeType
+          fact.nativeType,
+          fact.nativeSessionId
         )
       ]
     }

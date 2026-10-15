@@ -4,7 +4,7 @@
  * owner releases, so renderer and remote acknowledgements cannot race.
  */
 export class PtyPauseLeases {
-  private readonly owners = new Set<symbol>()
+  private readonly owners = new Set<string>()
 
   constructor(
     private readonly pause: () => void,
@@ -15,14 +15,14 @@ export class PtyPauseLeases {
     return this.owners.size
   }
 
-  acquire(owner: symbol): void {
+  acquire(owner: string): void {
     if (this.owners.has(owner)) return
     const first = this.owners.size === 0
     this.owners.add(owner)
     if (first) this.pause()
   }
 
-  release(owner: symbol): void {
+  release(owner: string): void {
     if (!this.owners.delete(owner)) return
     if (this.owners.size === 0) this.resume()
   }

@@ -1,5 +1,5 @@
 import type { AgentSessionRuntime } from '../agents/AgentSessionRuntime'
-import type { PTYManager } from '../pty/PTYManager'
+import type { PtyHostClient } from '../pty/PtyHostClient'
 import {
   PTY_DATA_HIGH_WATER_MARK_BYTES,
   PTY_DATA_LOW_WATER_MARK_BYTES,
@@ -38,7 +38,7 @@ function splitUtf8Text(text: string, maxBytes: number): string[] {
 }
 
 function remoteHistory(
-  history: ReturnType<PTYManager['history']>
+  history: Awaited<ReturnType<PtyHostClient['displayHistory']>>
 ): RemotePtyHistorySnapshot {
   if (!history) {
     return {
@@ -117,10 +117,10 @@ function remoteHistory(
 
 export function runtimeRemotePtyHost(
   runtime: AgentSessionRuntime,
-  manager: PTYManager
+  manager: PtyHostClient
 ): RemotePtyHost {
   return {
-    open(input, observer) {
+    async open(input, observer) {
       const record = runtime.getRecord(input.sessionId)
       if (!record) {
         const exited = runtime
@@ -128,18 +128,18 @@ export function runtimeRemotePtyHost(
           .some((candidate) => candidate.sessionId === input.sessionId)
         return { ok: false, reason: exited ? 'exited' : 'not-found' }
       }
-      const ptyId = manager.ptyIdForTerminal(record.terminalId)
-      if (!ptyId || !manager.isRunning(ptyId)) {
+      const ptyId = await manager.ptyIdForTerminal(record.terminalId)
+      if (!ptyId || !(await manager.isRunning(ptyId))) {
         return { ok: false, reason: 'exited' }
       }
-      const owner = Symbol(`remote-drive:${input.sessionId}`)
+      const owner = `remote-drive:${input.sessionId}`
       if (
-        !manager.acquireRemoteResize(
+        !(await manager.acquireRemoteResizeAsync(
           ptyId,
           owner,
           input.cols,
           input.rows
-        )
+        ))
       ) {
         return { ok: false, reason: 'busy' }
       }
@@ -192,7 +192,7 @@ export function runtimeRemotePtyHost(
       const target: RemoteDrivenPty = {
         sessionId: input.sessionId,
         terminalId: record.terminalId,
-        history: remoteHistory(manager.displayHistory(ptyId)),
+        history: remoteHistory(await manager.displayHistory(ptyId)),
         write: (data) => manager.write(ptyId, data),
         resize: (cols, rows) =>
           manager.resizeRemote(ptyId, owner, cols, rows),

@@ -3,7 +3,6 @@ import { spawn } from 'node-pty'
 import { execFile } from 'node:child_process'
 import { homedir } from 'node:os'
 import { promisify } from 'node:util'
-import { sendToEachWindow } from '../safe-send'
 import {
   ptyDataChannel,
   ptyExitChannel,
@@ -43,7 +42,7 @@ interface ManagedPty {
   lastForwardedOutputAt: number
   terminal?: PtyTerminalIdentity
   /** 远程驾驶期间 winsize 归手机；token 防止迟到 release 释放新驾驶。 */
-  remoteResizeOwner?: symbol
+  remoteResizeOwner?: string
   pauseLeases: PtyPauseLeases
 }
 
@@ -162,7 +161,23 @@ async function resolveWindowsExecutable(shell: string): Promise<string | null> {
  * 并缓存已退出 payload，避免「spawn 后立即退出」与「晚订阅」的竞态。
  * 本模块不引入 AgentEvent 或品牌判断。
  */
+export interface PtyWindowSink {
+  send(channel: string, payload: unknown): void
+}
+
+/** 宿主进程没有窗口。只有 Electron 主进程注入这个出口。 */
+let windowSink: PtyWindowSink | null = null
+
+export function setPtyWindowSink(sink: PtyWindowSink | null): void {
+  windowSink = sink
+}
+
+function sendPtyToWindows(channel: string, payload: unknown): void {
+  windowSink?.send(channel, payload)
+}
+
 export class PTYManager {
+  private deliverDisplay: ((ptyId: string, data: Uint8Array) => void) | null = null
   private readonly terminalRemovedListeners = new Set<(terminalId: string) => void>()
   private ptys = new Map<string, ManagedPty>()
   private nextId = 1
@@ -181,6 +196,11 @@ export class PTYManager {
     string,
     Set<(payload: { row: number; column: number }) => void>
   >()
+
+  /** 宿主把已经过背压的显示字节交回 Electron，不再走第二份窗口发送。 */
+  setDisplayDeliver(deliver: ((ptyId: string, data: Uint8Array) => void) | null): void {
+    this.deliverDisplay = deliver
+  }
 
   /**
    * 订阅某 pty 的退出（幂等：已退出则立刻用缓存的 payload 回调）。
@@ -229,7 +249,7 @@ export class PTYManager {
     const ptyId = String(this.nextId++)
     const cols = opts.cols ?? 80
     const rows = opts.rows ?? 24
-    console.log(
+    console.error(
       `[asc] spawn ptyId=${ptyId} shell=${opts.shell ?? '(default)'}`
     )
 
@@ -267,7 +287,7 @@ export class PTYManager {
     displayHistory.appendResize(cols, rows)
     const resizeFilter =
       process.platform === 'win32' ? new ConptyResizeFilter() : undefined
-    const rendererPauseOwner = Symbol(`renderer:${ptyId}`)
+    const rendererPauseOwner = `renderer:${ptyId}`
     const pauseLeases = new PtyPauseLeases(
       () => spawnedPty.pause(),
       () => spawnedPty.resume()
@@ -277,7 +297,8 @@ export class PTYManager {
       lowWaterMarkBytes: PTY_DATA_LOW_WATER_MARK_BYTES,
       maxBufferedBytes: PTY_DATA_MAX_BUFFERED_BYTES,
       send: (data) => {
-        sendToEachWindow(ptyDataChannel(ptyId), data)
+        this.deliverDisplay?.(ptyId, data)
+        sendPtyToWindows(ptyDataChannel(ptyId), data)
       },
       pause: () => {
         pauseLeases.acquire(rendererPauseOwner)
@@ -321,7 +342,7 @@ export class PTYManager {
         for (const listener of this.cursorSyncListeners.get(ptyId) ?? []) {
           listener(cursor)
         }
-        sendToEachWindow(ptyResizeCursorSyncChannel(ptyId), cursor)
+        sendPtyToWindows(ptyResizeCursorSyncChannel(ptyId), cursor)
       }
       if (displayData.length > 0) {
         managed.displayHistory.appendOutput(displayData)
@@ -346,7 +367,7 @@ export class PTYManager {
     pty.onExit(({ exitCode, signal }) => {
       const ch = ptyExitChannel(ptyId)
       const payload: ExitPayload = { code: exitCode, signal }
-      sendToEachWindow(ch, payload)
+      sendPtyToWindows(ch, payload)
       // 进程退出后仍保留会话历史，直到 renderer 明确 kill/关闭该会话。
       // 否则主进程权威源会在用户最需要回看退出输出时消失。
       const current = this.ptys.get(ptyId)
@@ -408,7 +429,7 @@ export class PTYManager {
 
   acquireRemoteResize(
     ptyId: string,
-    owner: symbol,
+    owner: string,
     cols: number,
     rows: number
   ): boolean {
@@ -423,7 +444,7 @@ export class PTYManager {
 
   resizeRemote(
     ptyId: string,
-    owner: symbol,
+    owner: string,
     cols: number,
     rows: number
   ): void {
@@ -434,7 +455,7 @@ export class PTYManager {
     this.schedulePendingResize(managed)
   }
 
-  releaseRemoteResize(ptyId: string, owner: symbol): void {
+  releaseRemoteResize(ptyId: string, owner: string): void {
     const managed = this.ptys.get(ptyId)
     if (!managed || managed.remoteResizeOwner !== owner) return
     managed.remoteResizeOwner = undefined
@@ -479,13 +500,13 @@ export class PTYManager {
     }
   }
 
-  pauseOutput(ptyId: string, owner: symbol): void {
+  pauseOutput(ptyId: string, owner: string): void {
     const managed = this.ptys.get(ptyId)
     if (!managed?.pty) return
     managed.pauseLeases.acquire(owner)
   }
 
-  resumeOutput(ptyId: string, owner: symbol): void {
+  resumeOutput(ptyId: string, owner: string): void {
     const managed = this.ptys.get(ptyId)
     if (!managed?.pty) return
     managed.pauseLeases.release(owner)

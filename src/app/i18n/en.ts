@@ -111,6 +111,13 @@ export const en = {
     resuming: 'Starting…',
     resumeHint: 'Continue this session in its original directory (in place, same session id)',
     resumeNoCwd: 'The original directory is gone — pick one to continue in',
+    relaunchTitle: 'Sessions were still open last time',
+    relaunchBody: (count: number) =>
+      `${count} saved a conversation key. Relaunch uses the original directory and arguments.`,
+    relaunchOne: 'Continue this one',
+    relaunchAll: 'Continue all',
+    relaunchDismiss: 'Not now',
+    relaunchMissingFile: 'That conversation file is gone, so it was not relaunched.',
     resumeFailed: (reason: string) => `Could not resume: ${reason}`,
     resumeBlockedSubagent:
       'A sub-agent session belongs to another session; resuming it alone is meaningless',

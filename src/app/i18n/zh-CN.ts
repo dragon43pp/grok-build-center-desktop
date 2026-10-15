@@ -114,6 +114,13 @@ export const zhCN = {
     resuming: '启动中…',
     resumeHint: '在原目录里接着这场会话继续（原地续，沿用同一个会话 id）',
     resumeNoCwd: '原目录已不存在，选一个目录再继续',
+    relaunchTitle: '上次退出时还有会话',
+    relaunchBody: (count: number) =>
+      `${count} 场已经记下对话钥匙。重进会按原目录和原参数拉起，不会另开一场。`,
+    relaunchOne: '继续这场',
+    relaunchAll: '全部继续',
+    relaunchDismiss: '先不继续',
+    relaunchMissingFile: '这场对话文件已经不在，没有按钥匙拉起。',
     resumeFailed: (reason: string) => `恢复失败：${reason}`,
     resumeBlockedSubagent: '子代理会话属于另一场会话，单独恢复没有意义',
     resumeBlockedNoId: '这场会话没有可用的 id',

@@ -91,7 +91,7 @@ export interface RemotePtyHost {
   open(
     input: { sessionId: string; cols: number; rows: number },
     observer: RemoteDriveObserver
-  ): RemotePtyOpenResult
+  ): RemotePtyOpenResult | Promise<RemotePtyOpenResult>
 }
 
 export interface RemoteLaunchRequest {
@@ -515,7 +515,9 @@ export class RemoteDesktopClient {
         this.deps.focusSession?.(message.sessionId)
         return
       case 'drive':
-        this.sendCreateOrDriveResponse(this.openDrive(message))
+        void this.openDrive(message).then((response) => {
+          this.sendCreateOrDriveResponse(response)
+        })
         return
       case 'create':
         void this.startCreate(message)
@@ -749,7 +751,7 @@ export class RemoteDesktopClient {
         requestId: message.requestId,
         sessionId: result.sessionId
       }
-      const drive = this.openDrive({
+      const drive = await this.openDrive({
         v: 1,
         type: 'drive',
         requestId: message.requestId,
@@ -769,9 +771,9 @@ export class RemoteDesktopClient {
     return [rejection]
   }
 
-  private openDrive(
+  private async openDrive(
     message: Extract<RemoteMessage, { type: 'drive' }>
-  ): RemoteMessage {
+  ): Promise<RemoteMessage> {
     if (this.driven) {
       return {
         v: 1,
@@ -781,7 +783,7 @@ export class RemoteDesktopClient {
         reason: 'busy'
       }
     }
-    const opened = this.deps.pty?.open(
+    const opened = await this.deps.pty?.open(
       {
         sessionId: message.sessionId,
         cols: message.cols,

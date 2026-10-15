@@ -34,6 +34,9 @@ import type {
   SpawnOptions
 } from '../../shared/ipc-contract'
 import type { BridgeAgent } from '../../shared/bridge-protocol'
+import { extractAgentSessionKey } from '../../shared/session-ledger'
+import type { SessionLedger } from '../sessions/SessionLedger'
+import type { TaskLedger } from '../sessions/TaskLedger'
 import { AgentEventQueue, type AgentQueueLimits } from './AgentEventQueue'
 import { normalizeAdapterEvent } from './AgentEventNormalizer'
 import { AgentEventProjector } from './AgentEventProjector'
@@ -87,11 +90,13 @@ const MAX_RETAINED_FINALIZED_SESSIONS = 100
 /** PTYManager 的主进程内部生命周期子集。 */
 export interface AgentPtyHost {
   spawn(opts: SpawnOptions): Promise<{ ptyId: string }>
+  /** 任务作答没有原生控制面时，把答案写进这场会话的终端。 */
+  write?(ptyId: string, data: string): void
   kill(ptyId: string): void
   onExit(ptyId: string, cb: (payload: ExitPayload) => void): () => void
   /** 不读取内容，只提供沉默 watchdog 所需的时间/存活事实。 */
-  lastOutputAt?(ptyId: string): number | null
-  isRunning?(ptyId: string): boolean
+  lastOutputAt?(ptyId: string): number | null | Promise<number | null>
+  isRunning?(ptyId: string): boolean | Promise<boolean>
   /** 只报告 CR/LF 提交边界，不暴露输入正文。 */
   onInputSubmitted?(ptyId: string, cb: () => void): () => void
 }
@@ -389,6 +394,23 @@ function validatePublishCaption(value: unknown): PublishAgentCaption | null {
   return { terminalId, text, outputTokens }
 }
 
+/** 送回超过此时限就当没送到。答案已经记下，不挂着等控制面。 */
+function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms)
+    work.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 export class AgentSessionRuntime {
   private readonly sessions = new Map<string, ActiveAgentSession>()
   private readonly listeners = new Set<
@@ -412,6 +434,8 @@ export class AgentSessionRuntime {
       history: AgentHistorySink
       registry: ObserverRegistry
       workspace?: AgentWorkspaceHost
+      ledger?: SessionLedger
+      tasks?: TaskLedger
       options: AgentRuntimeOptions
     }
   ) {
@@ -518,6 +542,19 @@ export class AgentSessionRuntime {
     }
     const spawnOptions = mergeEnvironmentAugmentation(baseOptions, augmentation)
     const name = input.name?.trim() ?? ''
+    const agentSessionKey = extractAgentSessionKey(adapterId, selection.args)
+    this.deps.ledger?.upsertRunning({
+      id: sessionId,
+      agentId: adapterId,
+      installationId: installation.id,
+      name: name || installation.definitionId,
+      cwd: workspace,
+      args: selection.args,
+      cols: input.cols,
+      rows: input.rows,
+      agentSessionKey,
+      terminalId: input.terminalId
+    })
 
     // 3. PTY spawn；失败必须 dispose prepared observer 并删除临时资源。
     let ptyId: string
@@ -537,6 +574,19 @@ export class AgentSessionRuntime {
           }
         })
       ).ptyId
+      this.deps.ledger?.upsertRunning({
+        id: sessionId,
+        agentId: adapterId,
+        installationId: installation.id,
+        name: name || installation.definitionId,
+        cwd: workspace,
+        args: selection.args,
+        cols: input.cols,
+        rows: input.rows,
+        agentSessionKey,
+        terminalId: input.terminalId,
+        hostPtyId: ptyId
+      })
     } catch (error) {
       await disposeResources([
         prepared
@@ -666,6 +716,12 @@ export class AgentSessionRuntime {
     // 5. PTY exit seam：退出事实只归约一次，再推送 renderer。
     session.unsubscribeExit = this.deps.pty.onExit(ptyId, (payload) => {
       if (session.finalized) return
+      const row = this.deps.ledger?.get(session.sessionId)
+      this.deps.ledger?.markStatus(
+        session.sessionId,
+        payload.code === 0 ? 'stopped' : 'crashed',
+        Boolean(row?.agentSessionKey)
+      )
       this.acceptAdapterEvent(session, {
         kind: 'session.exited',
         payload: { exitCode: payload.code, signal: payload.signal },
@@ -764,6 +820,12 @@ export class AgentSessionRuntime {
   async stop(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId)
     if (!session) return
+    const row = this.deps.ledger?.get(session.sessionId)
+    this.deps.ledger?.markStatus(
+      session.sessionId,
+      'stopped',
+      Boolean(row?.agentSessionKey)
+    )
     if (!session.finalized && !session.projection.correlation.exited) {
       // 手动关闭本身也是退出事实。先归约/投影，再由 exit flush 终止 PTY，
       // 避免异步 node-pty exit 回调被提前退订而丢失 session_exit。
@@ -860,6 +922,89 @@ export class AgentSessionRuntime {
     return this.sessions.get(sessionId)?.observerHandle?.control
   }
 
+  /**
+   * 按问题编号作答。
+   * 先确认这场会话还开着，再记账。账本记下后，原生控制面或终端输入失败
+   * 也不再改答案，避免飞书和命令行各答一次。
+   */
+  listTasks() {
+    return this.deps.tasks?.listOpen() ?? []
+  }
+
+  listTaskQuestions() {
+    return this.deps.tasks?.listOpenQuestions() ?? []
+  }
+
+  dismissResume(sessionId: string): void {
+    this.deps.ledger?.clearResume(sessionId)
+  }
+
+  async answerTaskQuestion(
+    questionId: string,
+    answer: string,
+    answeredBy: string
+  ): Promise<{ ok: true; alreadyAnswered: boolean; delivered: boolean } | null> {
+    const trimmed = answer.trim()
+    if (!questionId.trim() || questionId.length > 128 || !trimmed || trimmed.length > 4_000) {
+      return null
+    }
+    const tasks = this.deps.tasks
+    const question = tasks?.getQuestion(questionId)
+    if (!tasks || !question) return null
+    const session = this.sessions.get(question.sessionId)
+    if (!session || session.finalized) return null
+    const recorded = tasks.answer(questionId, trimmed, answeredBy)
+    if (!recorded) return null
+    if (recorded.alreadyAnswered) {
+      return { ok: true, alreadyAnswered: true, delivered: false }
+    }
+    let delivered = false
+    try {
+      delivered = await withDeadline(
+        this.deliverTaskAnswer(session, questionId, trimmed),
+        5_000
+      )
+    } catch {
+      delivered = false
+    }
+    this.acceptAdapterEvent(session, {
+      kind: trimmed === 'approved' || trimmed === 'denied' ? 'approval.resolved' : 'input.resolved',
+      payload:
+        trimmed === 'approved' || trimmed === 'denied'
+          ? { requestId: questionId, decision: trimmed }
+          : { requestId: questionId },
+      nativeId: `task-answer:${questionId}`
+    })
+    return { ok: true, alreadyAnswered: false, delivered }
+  }
+
+  private async deliverTaskAnswer(
+    session: ActiveAgentSession,
+    questionId: string,
+    answer: string
+  ): Promise<boolean> {
+    const control = session.observerHandle?.control
+    try {
+      if (answer === 'approved' && control?.respondPermission) {
+        await control.respondPermission(questionId, 'once')
+        return true
+      }
+      if (answer === 'denied' && control?.respondPermission) {
+        await control.respondPermission(questionId, 'reject')
+        return true
+      }
+      if (control?.answerQuestion && answer !== 'approved' && answer !== 'denied') {
+        await control.answerQuestion(questionId, answer)
+        return true
+      }
+      this.deps.pty.write?.(session.ptyId, `${answer}\r`)
+      return true
+    } catch (error) {
+      console.error('[agent-runtime] task answer delivery failed:', error)
+      return false
+    }
+  }
+
   subscribe(
     listener: (record: AgentSessionRecord, phase: AgentSessionPhase) => void
   ): () => void {
@@ -881,11 +1026,195 @@ export class AgentSessionRuntime {
     }
   }
 
-  /** 应用退出：对所有会话幂等清理，不遗留 hook server、socket 或 temp settings。 */
-  async disposeAll(): Promise<void> {
+  /**
+   * 应用退出。
+   * keep 只断开窗口：PTY 仍由本进程握着，账本保持 running，重开是重连。
+   * stop 杀掉进程，并给有钥匙的行打上重进标记。
+   */
+  async disposeAll(mode: 'keep' | 'stop' = 'stop'): Promise<void> {
+    if (mode === 'keep') return
     const sessions = [...this.sessions.values()]
+    for (const session of sessions) {
+      const row = this.deps.ledger?.get(session.sessionId)
+      this.deps.ledger?.markStatus(
+        session.sessionId,
+        'stopped',
+        Boolean(row?.agentSessionKey)
+      )
+    }
     await Promise.allSettled(
       sessions.map((session) => this.stop(session.sessionId))
+    )
+  }
+
+  /**
+   * 窗口重开后，把宿主里还活着的终端登记回会话表。
+   * 钩子已经随旧窗口一起没了，所以只恢复打字和退出记账。
+   * 宿主里找不到的行降成崩溃，交给重进名单。
+   */
+  async adoptLiveSessions(): Promise<number> {
+    const rows = this.deps.ledger?.listLiveAttached() ?? []
+    let adopted = 0
+    for (const row of rows) {
+      if (!row.hostPtyId || !row.terminalId || this.sessions.has(row.id)) continue
+      let running = false
+      try {
+        running = this.deps.pty.isRunning
+          ? await this.deps.pty.isRunning(row.hostPtyId)
+          : false
+      } catch (error) {
+        console.error('[agent-runtime] live session probe failed:', error)
+      }
+      if (!running) {
+        this.deps.ledger?.markStatus(row.id, 'crashed', Boolean(row.agentSessionKey))
+        continue
+      }
+      const installation = await this.deps.discovery
+        .resolveInstallation(row.installationId)
+        .catch(() => null)
+      const now = Date.now()
+      const projection = createInitialAgentProjection({
+        sessionId: row.id,
+        terminalId: row.terminalId,
+        installationId: row.installationId,
+        adapterId: row.agentId,
+        name: row.name,
+        capabilities: NO_OBSERVER_CAPABILITIES,
+        lastActivityAt: now
+      })
+      projection.observerHealth = 'lifecycle-only'
+      const session: ActiveAgentSession = {
+        sessionId: row.id,
+        terminalId: row.terminalId,
+        ptyId: row.hostPtyId,
+        installationId: row.installationId,
+        adapterId: row.agentId,
+        name: row.name,
+        workspace: row.cwd,
+        runtime:
+          installation?.runtime ??
+          {
+            kind: 'host',
+            platform:
+              process.platform === 'win32'
+                ? 'windows'
+                : process.platform === 'darwin'
+                  ? 'macos'
+                  : 'linux'
+          },
+        model: parseLaunchModel(row.args),
+        agent: parseLaunchAgent(row.args),
+        source: 'lifecycle',
+        capabilities: NO_OBSERVER_CAPABILITIES,
+        runDir: '',
+        queue: new AgentEventQueue(this.options.limits),
+        projector: new AgentEventProjector({
+          sessionId: row.id,
+          name: row.name,
+          workspace: row.cwd,
+          adapterId: row.agentId
+        }),
+        projection,
+        prepared: null,
+        observerHandle: null,
+        seq: 0,
+        lastActivityAt: now,
+        flushScheduled: false,
+        overflowReported: false,
+        finalized: false,
+        rejectedEventCount: 0,
+        unsubscribeExit: null,
+        unsubscribeDisconnect: null,
+        unsubscribeInput: null,
+        reconnectAttempted: false,
+        reconnecting: false,
+        observerEventsOpen: true,
+        observerDelivered: false,
+        handshakeMisses: 0,
+        handshakeTimer: null,
+        pendingObserverEvents: [],
+        pendingObserverOverflow: false,
+        idleTimer: null,
+        cleanupPromise: null
+      }
+      session.unsubscribeExit = this.deps.pty.onExit(row.hostPtyId, (payload) => {
+        if (session.finalized) return
+        this.deps.ledger?.markStatus(
+          session.sessionId,
+          payload.code === 0 ? 'stopped' : 'crashed',
+          Boolean(row.agentSessionKey)
+        )
+        this.acceptAdapterEvent(session, {
+          kind: 'session.exited',
+          payload: { exitCode: payload.code, signal: payload.signal },
+          nativeId: `pty-exit:${row.hostPtyId}`
+        })
+      })
+      this.sessions.set(row.id, session)
+      this.notify(session, 'updated')
+      adopted += 1
+    }
+    return adopted
+  }
+
+  /** 启动时把上次没写完的 running 降成 crashed，供重进名单使用。 */
+  demoteStaleLedger(): number {
+    return this.deps.ledger?.demoteStaleRunning() ?? 0
+  }
+
+  /**
+   * 把审批或提问收成任务问题。
+   * 问题 id 沿用 observer 的 requestId，飞书和命令行答的是同一题。
+   * 没有任务的会话先挂到一场同目录的开放任务上。
+   */
+  private recordTaskQuestion(
+    session: ActiveAgentSession,
+    event: { kind: string; payload: unknown }
+  ): void {
+    const tasks = this.deps.tasks
+    if (!tasks) return
+    if (event.kind !== 'approval.requested' && event.kind !== 'input.requested') {
+      return
+    }
+    const payload =
+      event.payload && typeof event.payload === 'object'
+        ? (event.payload as { requestId?: unknown; summary?: unknown; prompt?: unknown })
+        : null
+    const requestId = typeof payload?.requestId === 'string' ? payload.requestId.trim() : ''
+    if (!requestId || requestId.length > 128 || tasks.getQuestion(requestId)) return
+    const taskId =
+      tasks.taskIdForSession(session.sessionId) ??
+      tasks.create({
+        title: session.name || session.adapterId,
+        cwd: session.workspace
+      }).id
+    tasks.attachSession(taskId, session.sessionId)
+    const prompt = (
+      event.kind === 'approval.requested'
+        ? typeof payload?.summary === 'string'
+          ? payload.summary
+          : '需要你批准'
+        : typeof payload?.prompt === 'string'
+          ? payload.prompt
+          : '需要你回答'
+    ).slice(0, 1_024)
+    tasks.openQuestion({
+      id: requestId,
+      taskId,
+      sessionId: session.sessionId,
+      prompt,
+      choices: event.kind === 'approval.requested' ? ['approved', 'denied'] : []
+    })
+  }
+
+  /** 只返回已经拿到 CLI 钥匙的行。没有钥匙的重进会变成另一场新对话。 */
+  listLiveAttached() {
+    return this.deps.ledger?.listLiveAttached() ?? []
+  }
+
+  listResumeOnLaunch() {
+    return (this.deps.ledger?.listResumeOnLaunch() ?? []).filter(
+      (row) => row.agentSessionKey
     )
   }
 
@@ -922,6 +1251,10 @@ export class AgentSessionRuntime {
       session.rejectedEventCount++
       return
     }
+    const capturedKey = normalized.agentSessionKey?.trim()
+    if (capturedKey) this.deps.ledger?.captureKey(session.sessionId, capturedKey)
+    this.recordTaskQuestion(session, normalized)
+
     const event: AgentEvent = {
       id: randomUUID(),
       sessionId: session.sessionId,
@@ -1217,6 +1550,10 @@ export class AgentSessionRuntime {
   // ───── Idle 计时（PLAN-S1 §6.2：由主进程显式生成事实，renderer 不猜） ─────
 
   private checkIdle(session: ActiveAgentSession): void {
+    void this.checkIdleAsync(session)
+  }
+
+  private async checkIdleAsync(session: ActiveAgentSession): Promise<void> {
     if (session.finalized) return
     const projection = session.projection
     if (
@@ -1228,12 +1565,12 @@ export class AgentSessionRuntime {
     if (
       projection.status !== 'working' ||
       !capabilitiesHaveSemantics(session.capabilities) ||
-      (this.deps.pty.isRunning && !this.deps.pty.isRunning(session.ptyId))
+      (this.deps.pty.isRunning && !(await this.deps.pty.isRunning(session.ptyId)))
     ) {
       return
     }
     const now = Date.now()
-    const lastOutputAt = this.deps.pty.lastOutputAt?.(session.ptyId) ?? 0
+    const lastOutputAt = (await this.deps.pty.lastOutputAt?.(session.ptyId)) ?? 0
     const since = Math.max(projection.lastActivityAt, lastOutputAt)
     if (
       this.options.silenceAfterMs > 0 &&

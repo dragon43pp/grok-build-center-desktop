@@ -146,7 +146,12 @@ export class OpenCodeEventProjector {
       case 'session-status':
         return this.updateStatus(fact, now)
       case 'session-idle':
-        return this.idleSession(fact.sessionId, fact.nativeType, now)
+        return this.idleSession(fact.sessionId, fact.nativeType, now).map(
+          (event) =>
+            fact.sessionId && !event.agentSessionKey
+              ? { ...event, agentSessionKey: fact.sessionId }
+              : event
+        )
       case 'session-error':
         return this.failSession(fact, now)
       case 'message-user': {

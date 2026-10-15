@@ -6,6 +6,7 @@
  * HistoryEvent 是事实的低敏摘要。三者不能合并成一个可选字段大对象。
  */
 
+import type { SessionLedgerRow } from './session-ledger'
 import type { CliLaunchSelection } from './ipc-contract'
 
 // ───── AgentEvent 统一事件模型（PLAN-S1 §4）─────────────
@@ -298,6 +299,15 @@ export interface AgentApi {
   ): Promise<AgentSessionProjection | null>
   publishCaption(input: PublishAgentCaption): Promise<void>
   listActive(): Promise<AgentSessionProjection[]>
+  /** 上次退出或崩溃后，打了重进标记、且已有 CLI 钥匙的会话。 */
+  listResumeOnLaunch(): Promise<SessionLedgerRow[]>
+  probeConversation(
+    agentId: string,
+    sessionKey: string | null
+  ): Promise<{ ok: true } | { ok: false; reason: string }>
+  dismissResume(sessionId: string): Promise<void>
+  /** 窗口重开后，宿主里还活着的终端。界面用它重连，不新开进程。 */
+  listLiveAttached(): Promise<SessionLedgerRow[]>
   onEvents(cb: (events: AgentEvent[]) => void): () => void
   onProjection(cb: (projection: AgentSessionProjection) => void): () => void
 }
@@ -307,7 +317,11 @@ export const AgentInvokeChannel = {
   Stop: 'agent:stop',
   Rename: 'agent:rename',
   PublishCaption: 'agent:publish-caption',
-  ListActive: 'agent:list-active'
+  ListActive: 'agent:list-active',
+  ListResumeOnLaunch: 'agent:list-resume-on-launch',
+  ProbeConversation: 'agent:probe-conversation',
+  DismissResume: 'agent:dismiss-resume',
+  ListLiveAttached: 'agent:list-live-attached'
 } as const
 
 export const AgentEventChannel = {

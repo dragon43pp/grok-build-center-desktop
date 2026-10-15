@@ -350,6 +350,14 @@ const agentApi: AgentApi = {
   publishCaption: (input: PublishAgentCaption) =>
     ipcRenderer.invoke(AgentInvokeChannel.PublishCaption, input),
   listActive: () => ipcRenderer.invoke(AgentInvokeChannel.ListActive),
+  listResumeOnLaunch: () =>
+    ipcRenderer.invoke(AgentInvokeChannel.ListResumeOnLaunch),
+  probeConversation: (agentId: string, sessionKey: string | null) =>
+    ipcRenderer.invoke(AgentInvokeChannel.ProbeConversation, { agentId, sessionKey }),
+  dismissResume: (sessionId: string) =>
+    ipcRenderer.invoke(AgentInvokeChannel.DismissResume, sessionId),
+  listLiveAttached: () =>
+    ipcRenderer.invoke(AgentInvokeChannel.ListLiveAttached),
   onEvents: (cb) => {
     const handler = (_event: IpcRendererEvent, events: unknown): void => {
       if (Array.isArray(events) && events.length <= 500) {

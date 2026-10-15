@@ -14,9 +14,20 @@ import {
 
 const MAX_LINE = 256 * 1024
 
+export interface BridgeTaskPort {
+  listTasks(): unknown
+  listTaskQuestions(): unknown
+  answerTaskQuestion(
+    questionId: string,
+    answer: string,
+    answeredBy: string
+  ): Promise<unknown>
+}
+
 export interface BridgeServerOptions {
   userDataDir: string
   plane: OpenCodeControlPlane
+  tasks?: BridgeTaskPort
   socketPath?: string
 }
 
@@ -33,6 +44,23 @@ export class BridgeServer {
 
   constructor(private readonly options: BridgeServerOptions) {
     this.socketPath = options.socketPath ?? bridgeSocketPath()
+  }
+
+  private async handleTask(method: string, params: unknown): Promise<unknown | null> {
+    const tasks = this.options.tasks
+    if (!tasks || !method.startsWith('tasks.')) return null
+    if (method === 'tasks.list') return tasks.listTasks()
+    if (method === 'tasks.questions') return tasks.listTaskQuestions()
+    if (method === 'tasks.answer') {
+      const raw = params && typeof params === 'object' ? (params as Record<string, unknown>) : {}
+      const questionId = typeof raw.questionId === 'string' ? raw.questionId : ''
+      const answer = typeof raw.answer === 'string' ? raw.answer : ''
+      if (!questionId || !answer) throw BridgeError.invalid('questionId and answer are required')
+      const result = await tasks.answerTaskQuestion(questionId, answer, 'cli')
+      if (!result) throw BridgeError.invalid('Question is not open on a live session')
+      return result
+    }
+    throw BridgeError.invalid(`Unknown method: ${method}`)
   }
 
   async start(): Promise<string> {
@@ -134,6 +162,11 @@ export class BridgeServer {
       return
     }
     try {
+      const taskResult = await this.handleTask(request.method, request.params)
+      if (taskResult) {
+        writeJson(socket, { kind: 'result', id, ok: true, result: taskResult })
+        return
+      }
       const handled = await this.options.plane.handle(request.method, request.params)
       if (handled.kind === 'json') {
         writeJson(socket, { kind: 'result', id, ok: true, result: handled.value })

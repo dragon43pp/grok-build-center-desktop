@@ -400,10 +400,14 @@ export function normalizeAdapterEvent(value: unknown): AdapterEvent | null {
   const nativeType =
     boundedText(raw.nativeType, MAX_NATIVE_TYPE_LENGTH) || undefined
 
+  const agentSessionKey =
+    boundedText(raw.agentSessionKey, MAX_ID_LENGTH) || undefined
+
   return {
     kind,
     payload: normalizedPayload,
     nativeId,
-    nativeType
+    nativeType,
+    ...(agentSessionKey ? { agentSessionKey } : {})
   } as AdapterEvent
 }

@@ -53,6 +53,11 @@ type AdapterEventOf<E extends AgentEvent = AgentEvent> = E extends AgentEvent
   nativeId?: string
   /** 有界诊断字段，不参与状态逻辑。 */
   nativeType?: string
+  /**
+   * CLI 自己的对话 id。只供账本记钥匙，不进入状态归约。
+   * 没有这把钥匙，重进只能开一场新对话。
+   */
+  agentSessionKey?: string
     }
   : never
 

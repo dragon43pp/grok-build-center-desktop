@@ -12,8 +12,8 @@ test('only resumes PTY output after every consumer releases its pause lease', ()
       resumes += 1
     }
   )
-  const renderer = Symbol('renderer')
-  const phone = Symbol('phone')
+  const renderer = 'renderer'
+  const phone = 'phone'
 
   leases.acquire(renderer)
   leases.acquire(phone)

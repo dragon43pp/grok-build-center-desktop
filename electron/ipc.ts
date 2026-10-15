@@ -8,7 +8,7 @@ import {
   shell
 } from 'electron'
 import { join } from 'node:path'
-import { PTYManager } from './pty/PTYManager'
+import type { PtyHostClient } from './pty/PtyHostClient'
 import { sendToEachWindow } from './safe-send'
 import {
   AppInvokeChannel,
@@ -348,7 +348,7 @@ function parseDirectoryPickerRequest(value: unknown): DirectoryPickerRequest {
 }
 
 /** 注册所有 pty 相关的 invoke handler，委托 PTYManager。 */
-export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
+export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
   const userThemes = new UserThemeStore(
     join(app.getPath('userData'), 'themes')
   )
@@ -772,6 +772,30 @@ export function registerIpc(manager: PTYManager, ctx: IpcContext): void {
     ...ctx.agentRuntime.listActive(),
     ...ctx.dshProjections.listActive()
   ])
+  ipcMain.handle(AgentInvokeChannel.ListResumeOnLaunch, () =>
+    ctx.agentRuntime.listResumeOnLaunch()
+  )
+  ipcMain.handle(
+    AgentInvokeChannel.ProbeConversation,
+    (_event, payload: unknown) => {
+      const raw =
+        payload && typeof payload === 'object'
+          ? (payload as { agentId?: unknown; sessionKey?: unknown })
+          : {}
+      const agentId = typeof raw.agentId === 'string' ? raw.agentId : ''
+      const sessionKey = typeof raw.sessionKey === 'string' ? raw.sessionKey : null
+      return import('./sessions/conversationProbe').then((probe) =>
+        probe.probeConversationFile(agentId, sessionKey)
+      )
+    }
+  )
+  ipcMain.handle(AgentInvokeChannel.ListLiveAttached, () =>
+    ctx.agentRuntime.listLiveAttached()
+  )
+  ipcMain.handle(AgentInvokeChannel.DismissResume, (_event, sessionId: unknown) => {
+    if (typeof sessionId !== 'string' || sessionId.length > 128) return
+    ctx.agentRuntime.dismissResume(sessionId)
+  })
 
   ipcMain.handle(StatsInvokeChannel.AllTime, () => ctx.eventLog.allTimeStats())
   ipcMain.handle(StatsInvokeChannel.HistoryEvents, (_event, query: unknown) => {
