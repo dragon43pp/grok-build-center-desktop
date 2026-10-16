@@ -8,6 +8,34 @@
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-10-16
+
+这一版修正打开应用后不接回上次会话的问题。1.0.8 只重进已经退出的会话，窗口关掉但终端还在跑的那场不会出现。
+
+### 修复
+
+- **还在跑的会话也会在打开时接回。** 只要账本里有对话钥匙，无论状态是还在跑还是已经退出，打开应用都会把它拉起来。宿主里的终端还活着时仍然直接接上，不另开一场。
+
+### 说明
+
+- 1.0.7 里关掉、当时没有记下钥匙的会话，仍然不会自动出现。
+- 本版本不带代码签名。
+
+---
+
+### English
+
+This release fixes sessions that stayed running not coming back when the app opened. 1.0.8 only relaunched sessions that had already exited.
+
+### Fixed
+
+- **A still-running session is restored on open.** Any ledger row with a conversation key is relaunched, whether it is still running or already exited. A terminal that is still alive in the host is attached instead of started again.
+
+### Notes
+
+- Sessions closed under 1.0.7, before a key was saved, still do not come back automatically.
+- This release is not code-signed.
+
 ## [1.0.8] - 2026-10-16
 
 这一版让关掉窗口之后的会话还能接上。终端留在单独的宿主里；宿主也没了，第二天打开会按记下的对话钥匙重新拉起。

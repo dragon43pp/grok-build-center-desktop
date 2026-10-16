@@ -815,6 +815,7 @@ export default function AppShell() {
   const relaunchLedgerRow = useCallback(
     async (row: SessionLedgerRow): Promise<boolean> => {
       if (!row.agentSessionKey) return false
+      if (liveSessionIds.includes(row.id)) return true
       const probe = await window.agentApi.probeConversation(
         row.agentId,
         row.agentSessionKey
@@ -846,7 +847,7 @@ export default function AppShell() {
       })
       return true
     },
-    [cliReport, launchCli]
+    [cliReport, launchCli, liveSessionIds]
   )
 
   const autoResumeStarted = useRef(false)

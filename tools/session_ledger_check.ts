@@ -80,6 +80,7 @@ try {
     agentSessionKey: 'ses_abc'
   })
   check('同一把钥匙重新拉起后，旧行不再提示重进', ledger.listResumeOnLaunch().every((row) => row.id !== 'asc-1'))
+  check('还在跑且已有钥匙的行也进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-3'))
 
   ledger.upsertRunning({
     id: 'asc-2',
@@ -89,10 +90,11 @@ try {
     cwd: 'D:\\work',
     args: [],
     cols: 80,
-    rows: 24
+    rows: 24,
+    agentSessionKey: 'agy-key'
   })
   check('崩溃前还在跑的行会被降级', ledger.demoteStaleRunning() === 2)
-  check('降级行进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-2'))
+  check('有钥匙的降级行进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-2'))
   check('主动停止的行不被降级成崩溃', ledger.get('asc-1')?.status === 'stopped')
   ledger.close()
 

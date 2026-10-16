@@ -149,7 +149,11 @@ export class SessionLedger {
     const rows = this.db
       .prepare(
         `SELECT * FROM sessions
-         WHERE resume_on_launch = 1 AND status != 'running'
+         WHERE agent_session_key IS NOT NULL AND agent_session_key != ''
+           AND (
+             (resume_on_launch = 1 AND status != 'running')
+             OR status = 'running'
+           )
          ORDER BY updated_at DESC`
       )
       .all()
