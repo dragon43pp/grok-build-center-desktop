@@ -52,6 +52,11 @@ export const zhTW = {
       `無法建立 worktree：${reason}。可以先取消，或確認後按原目錄分叉。`,
     childTerminals: '展開或收合子終端',
     renameSession: '重新命名',
+    newProject: '新增專案',
+    moveToProject: (name: string) => `歸入「${name}」`,
+    handoff: '交給其他助手',
+    handBack: '交回',
+    findProject: '查找專案或工作階段',
     sessionNameRequired: '工作階段名稱不能為空'
   },
   sessionHistory: {

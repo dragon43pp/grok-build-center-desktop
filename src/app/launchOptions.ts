@@ -20,6 +20,8 @@ export interface CliLaunchDraft {
   workspace: string
   args: string
   skipApproval?: boolean
+  /** 新会话起来之后送进终端的第一段说明。只用于交接。 */
+  openingNote?: string
 }
 
 /** Shell-like argument splitting without invoking a command interpreter. */

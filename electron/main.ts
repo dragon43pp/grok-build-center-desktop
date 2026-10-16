@@ -44,6 +44,7 @@ import { AgentSessionRuntime } from './agents/AgentSessionRuntime'
 import { SessionLedger } from './sessions/SessionLedger'
 import { defaultSkillRoots, installAgentSkills } from './agents/installAgentSkill'
 import { TaskLedger } from './sessions/TaskLedger'
+import { ProjectStore } from './sessions/ProjectStore'
 import { ObserverRegistry } from './agents/ObserverRegistry'
 import { FixtureObserverAdapter } from './agents/adapters/fixture'
 import { ClaudeObserverAdapter } from './agents/adapters/claude/ClaudeObserverAdapter'
@@ -222,9 +223,11 @@ observerRegistry.register(new GrokObserverAdapter())
 observerRegistry.register(new FixtureObserverAdapter())
 let sessionLedger: SessionLedger | undefined
 let taskLedger: TaskLedger | undefined
+let projectStore: ProjectStore | undefined
 try {
   sessionLedger = new SessionLedger(app.getPath('userData'))
   taskLedger = new TaskLedger(app.getPath('userData'))
+  projectStore = new ProjectStore(app.getPath('userData'))
 } catch (error) {
   console.error('[asc] session ledger unavailable:', error)
 }
@@ -705,6 +708,8 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
     eventLog,
     cliDiscovery,
     agentRuntime,
+    sessionLedger,
+    projects: projectStore,
     workspaceReader,
     dshHost,
     dshWire,

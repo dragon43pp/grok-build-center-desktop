@@ -56,6 +56,11 @@ export const zhCN = {
       `没能创建 worktree：${reason}。可以先取消，或确认后按原目录分叉。`,
     childTerminals: '展开或收起子终端',
     renameSession: '重命名',
+    newProject: '新建项目',
+    moveToProject: (name: string) => `归入「${name}」`,
+    handoff: '交给其他助手',
+    handBack: '交回',
+    findProject: '查找项目或会话',
     sessionNameRequired: '会话名称不能为空'
   },
   sessionHistory: {

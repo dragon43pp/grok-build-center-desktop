@@ -4,6 +4,8 @@ import type {
   CliScanReport,
   FeishuStatus,
   RemoteDriveState,
+  ProjectFilePayload,
+  ProjectSummary,
   ShellOption,
   UpdateSnapshot
 } from '../../shared/ipc-contract'
@@ -59,6 +61,7 @@ import {
 } from './launchOptions'
 import { useSettingsStore, type NavMode } from '../state/settingsStore'
 import { useSessionsStore, type SessionEntry } from '../state/sessionsStore'
+import { getTerminalLaunch } from '../state/terminalLaunchRegistry'
 import { useAgentEventsStore } from '../state/agentEventsStore'
 import { useTerminalsStore } from '../state/terminalsStore'
 import { useWorkspaceReaderStore } from '../workspace-reader/workspaceReaderStore'
@@ -169,6 +172,20 @@ export default function AppShell() {
   const [dshRestartSnapshot, setDshRestartSnapshot] =
     useState<DshSurfaceSnapshot | null>(null)
   const pendingCliLaunches = useRef(new Map<string, PendingCliLaunch>())
+  const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
+  const [projectFile, setProjectFile] = useState<ProjectFilePayload | null>(null)
+  const [handoffDraft, setHandoffDraft] = useState<{
+    session: SessionEntry
+    projectId: string
+    agentId: string
+    brief: string
+    returning: boolean
+  } | null>(null)
+  const pendingProjectAssign = useRef<{
+    terminalId: string
+    projectId: string
+  } | null>(null)
   const pendingBridgeLaunches = useRef(new Map<string, PendingBridgeLaunch>())
   const navMode = useSettingsStore((state) => state.navMode)
   const setNavMode = useSettingsStore((state) => state.setNavMode)
@@ -1149,6 +1166,15 @@ export default function AppShell() {
       // 成功路径：会话条目由主进程 session.started 投影创建，无需本地 addSession。
       setNewSessionOpen(false)
       setPageId(terminalPage(terminalId))
+      const note = pending.draft.openingNote?.trim()
+      if (note) {
+        window.setTimeout(() => {
+          const launch = getTerminalLaunch(terminalId)
+          if (launch?.kind === 'attach') {
+            void window.ptyApi.write(launch.ptyId, `${note}\r`)
+          }
+        }, 1200)
+      }
       pending.resolve(null)
     },
     [closeTerminal]
@@ -1263,6 +1289,199 @@ export default function AppShell() {
     setPendingCloseSession(session)
   }, [])
 
+  const refreshProjects = useCallback((): void => {
+    void window.sessionsApi.listProjects().then(setProjects).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    refreshProjects()
+  }, [refreshProjects])
+
+  const createProjectFor = useCallback(
+    (session: SessionEntry): void => {
+      const cwd =
+        useTerminalsStore
+          .getState()
+          .terminals.find((terminal) => terminal.id === session.terminalId)?.cwd ?? ''
+      const name = session.name.trim().slice(0, 40) || '未命名项目'
+      void window.sessionsApi.createProject(name, cwd).then(async (project) => {
+        if (!project) return
+        if (session.adapterSessionId) {
+          await window.sessionsApi.assignProject(
+            project.id,
+            session.adapterId,
+            session.adapterSessionId
+          )
+        }
+        refreshProjects()
+      })
+    },
+    [refreshProjects]
+  )
+
+  const assignProject = useCallback(
+    (session: SessionEntry, projectId: string): void => {
+      if (!session.adapterSessionId) return
+      void window.sessionsApi
+        .assignProject(projectId, session.adapterId, session.adapterSessionId)
+        .then(() => refreshProjects())
+    },
+    [refreshProjects]
+  )
+
+  const openProject = useCallback((projectId: string): void => {
+    void window.sessionsApi.readProject(projectId).then((file) => {
+      setOpenProjectId(projectId)
+      setProjectFile(file)
+      setPageId('home')
+    })
+  }, [])
+
+  const saveOpenProject = useCallback(
+    (projectId: string, file: ProjectFilePayload): void => {
+      void window.sessionsApi.saveProject(projectId, file).then((saved) => {
+        if (saved) setProjectFile(saved)
+        refreshProjects()
+      })
+    },
+    [refreshProjects]
+  )
+
+  const beginHandoff = useCallback(
+    (session: SessionEntry): void => {
+      const project = projects.find((item) =>
+        item.members.some(
+          (member) =>
+            member.agentId === session.adapterId &&
+            member.agentSessionKey === session.adapterSessionId
+        )
+      )
+      if (!project || !session.adapterSessionId) return
+      const target =
+        cliReport?.launchable.find((item) => item.definition.id !== 'dsh') ?? null
+      setHandoffDraft({
+        session,
+        projectId: project.id,
+        agentId: target?.definition.id ?? 'antigravity',
+        returning: false,
+        brief: [
+          `项目：${project.name}`,
+          `来自：${session.name}`,
+          project.goal ? `目标：${project.goal}` : '',
+          '要做的事：'
+        ]
+          .filter(Boolean)
+          .join('\n')
+      })
+    },
+    [cliReport, projects]
+  )
+
+  const beginHandBack = useCallback(
+    (session: SessionEntry): void => {
+      const project = projects.find((item) =>
+        item.members.some(
+          (member) =>
+            member.agentId === session.adapterId &&
+            member.agentSessionKey === session.adapterSessionId
+        )
+      )
+      if (!project) return
+      setHandoffDraft({
+        session,
+        projectId: project.id,
+        agentId: session.adapterId,
+        returning: true,
+        brief: `交回 ${session.name} 审查：\n`
+      })
+    },
+    [projects]
+  )
+
+  const sendHandoff = useCallback((): void => {
+    const draft = handoffDraft
+    if (!draft) return
+    const option =
+      cliReport?.launchable.find(
+        (item) => item.definition.id === draft.agentId
+      ) ?? null
+    const installation = option?.installations[0]
+    const cwd =
+      useTerminalsStore
+        .getState()
+        .terminals.find((terminal) => terminal.id === draft.session.terminalId)?.cwd
+    if (!option || !installation || !cwd?.trim()) {
+      setHandoffDraft(null)
+      return
+    }
+    const stamp = new Date().toLocaleString()
+    void window.sessionsApi.noteProject(
+      draft.projectId,
+      `${stamp} ${draft.returning ? '交回' : '交给'} ${option.definition.displayName}：${draft.brief.replace(/\s+/g, ' ').slice(0, 180)}`
+    )
+    if (draft.returning && draft.session.adapterSessionId) {
+      const plan = planResume({
+        agent: draft.session.adapterId as HistorySession['agent'],
+        id: draft.session.adapterSessionId,
+        title: draft.session.name,
+        cwd,
+        createdAt: null,
+        updatedAt: null,
+        messageCount: 0,
+        model: '',
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 0 },
+        costUsd: 0,
+        costSource: 'none',
+        storage: 'file',
+        path: '',
+        archived: false,
+        subagent: false
+      })
+      const resumeArgs = plan.ok ? formatArgs(plan.args) : ''
+      setHandoffDraft(null)
+      void launchCli({
+        option,
+        installationId: installation.id,
+        name: draft.session.name,
+        workspace: cwd,
+        args: resumeArgs,
+        skipApproval: true,
+        openingNote: draft.brief
+      })
+      return
+    }
+    setHandoffDraft(null)
+    void launchCli({
+      option,
+      installationId: installation.id,
+      name: `${draft.session.name} · 交接`,
+      workspace: cwd,
+      args: '',
+      skipApproval: false,
+      openingNote: draft.brief
+    }).then((error) => {
+      if (error) return
+      const terminalId = useTerminalsStore.getState().activeTerminalId
+      if (terminalId) {
+        pendingProjectAssign.current = { terminalId, projectId: draft.projectId }
+      }
+    })
+  }, [cliReport, handoffDraft, launchCli])
+
+  useEffect(() => {
+    const pending = pendingProjectAssign.current
+    if (!pending) return
+    const started = sessions.find(
+      (session) =>
+        session.terminalId === pending.terminalId && session.adapterSessionId
+    )
+    if (!started?.adapterSessionId) return
+    pendingProjectAssign.current = null
+    void window.sessionsApi
+      .assignProject(pending.projectId, started.adapterId, started.adapterSessionId)
+      .then(() => refreshProjects())
+  }, [refreshProjects, sessions])
+
   useEffect(() => {
     const unregister = registerShellShortcutActions({
       openNewSession,
@@ -1359,6 +1578,12 @@ export default function AppShell() {
                 }}
                 onCloseSession={requestCloseSession}
                 onCloseTerminal={closeTerminalAndRoute}
+                projects={projects}
+                onOpenProject={openProject}
+                onCreateProject={createProjectFor}
+                onAssignProject={assignProject}
+                onHandoff={beginHandoff}
+                onHandBack={beginHandBack}
               />
             </motion.div>
           ) : (
@@ -1569,7 +1794,43 @@ export default function AppShell() {
           }`}
         >
           <div className="relative min-h-0 flex-1 overflow-hidden">
-            {pageId === 'home' && (
+            {pageId === 'home' && projectFile && (
+              <section data-testid="project-editor" className="flex h-full flex-col gap-3 overflow-y-auto p-6">
+                <h1 className="font-pingfang text-[18px] font-semibold text-text-primary">
+                  {projects.find((project) => project.id === openProjectId)?.name ?? '项目'}
+                </h1>
+                <label className="font-pingfang text-[12px] text-text-muted">
+                  目标
+                  <textarea
+                    value={projectFile.goal}
+                    onChange={(event) =>
+                      setProjectFile({ ...projectFile, goal: event.target.value })
+                    }
+                    className="mt-1 h-24 w-full rounded-lg border border-border-default bg-content p-2 text-[12px] text-text-primary"
+                  />
+                </label>
+                <label className="font-pingfang text-[12px] text-text-muted">
+                  进展
+                  <textarea
+                    value={projectFile.progress}
+                    onChange={(event) =>
+                      setProjectFile({ ...projectFile, progress: event.target.value })
+                    }
+                    className="mt-1 h-40 w-full rounded-lg border border-border-default bg-content p-2 text-[12px] text-text-primary"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (openProjectId) saveOpenProject(openProjectId, projectFile)
+                  }}
+                  className="w-fit rounded-lg bg-button-primary px-3 py-1.5 font-pingfang text-[12px] text-button-primary-fg"
+                >
+                  保存
+                </button>
+              </section>
+            )}
+            {pageId === 'home' && !projectFile && (
               <HomePage
                 sessions={sessions}
                 shells={shells}
@@ -1703,6 +1964,57 @@ export default function AppShell() {
         )}
       </AnimatePresence>
 
+      {handoffDraft && (
+        <div
+          data-testid="handoff-dialog"
+          className="absolute inset-0 z-[95] flex items-center justify-center bg-backdrop-strong p-6"
+        >
+          <div className="flex w-[420px] flex-col gap-3 rounded-xl border border-border-default bg-surface p-4">
+            <h2 className="font-pingfang text-[14px] font-semibold text-text-primary">
+              {handoffDraft.returning ? '交回' : '交给其他助手'}
+            </h2>
+            <select
+              value={handoffDraft.agentId}
+              onChange={(event) =>
+                setHandoffDraft({ ...handoffDraft, agentId: event.target.value })
+              }
+              className="rounded-md border border-border-default bg-content px-2 py-1 text-[12px]"
+            >
+              {(cliReport?.launchable ?? [])
+                .filter((item) => item.definition.id !== 'dsh')
+                .map((item) => (
+                  <option key={item.definition.id} value={item.definition.id}>
+                    {item.definition.displayName}
+                  </option>
+                ))}
+            </select>
+            <textarea
+              value={handoffDraft.brief}
+              onChange={(event) =>
+                setHandoffDraft({ ...handoffDraft, brief: event.target.value })
+              }
+              className="h-40 rounded-md border border-border-default bg-content p-2 font-pingfang text-[12px] text-text-primary"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setHandoffDraft(null)}
+                className="rounded-lg px-3 py-1.5 font-pingfang text-[12px] text-text-muted"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                data-testid="handoff-submit"
+                onClick={sendHandoff}
+                className="rounded-lg bg-button-primary px-3 py-1.5 font-pingfang text-[12px] text-button-primary-fg"
+              >
+                送出
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AnimatePresence>
         {updateModalVersion && (
           <UpdateAvailableModal

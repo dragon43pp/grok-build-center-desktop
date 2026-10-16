@@ -52,6 +52,11 @@ export const ko = {
       `worktree를 만들지 못했습니다: ${reason}. 취소하거나, 확인하면 원래 디렉터리에서 포크합니다.`,
     childTerminals: '하위 터미널 펼치기 또는 접기',
     renameSession: '이름 바꾸기',
+    newProject: '프로젝트 만들기',
+    moveToProject: (name: string) => `「${name}」에 넣기`,
+    handoff: '다른 도우미에게 넘기기',
+    handBack: '돌려주기',
+    findProject: '프로젝트 또는 세션 찾기',
     sessionNameRequired: '세션 이름을 입력하세요'
   },
   sessionHistory: {

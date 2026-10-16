@@ -26,6 +26,7 @@ import {
 } from './pages'
 import { statusDot, statusLabel } from './sessionStatus'
 import { useStrings, type AppStrings } from './i18n'
+import type { ProjectSummary } from '../../shared/ipc-contract'
 import type { SessionEntry } from '../state/sessionsStore'
 import type { TerminalEntry } from '../state/terminalsStore'
 import { useSidebarSessionDrag } from '../session-navigation/useSidebarSessionDrag'
@@ -46,6 +47,12 @@ interface SidebarProps {
   onCreateChildTerminal: (session: SessionEntry) => void
   onCloseSession: (session: SessionEntry) => void
   onCloseTerminal: (terminalId: string) => void
+  projects: readonly ProjectSummary[]
+  onOpenProject: (projectId: string) => void
+  onCreateProject: (session: SessionEntry) => void
+  onAssignProject: (session: SessionEntry, projectId: string) => void
+  onHandoff: (session: SessionEntry) => void
+  onHandBack: (session: SessionEntry) => void
 }
 
 function relativeTime(strings: AppStrings, timestamp: number): string {
@@ -94,9 +101,45 @@ export default function Sidebar({
   onForkSessionGit,
   onCreateChildTerminal,
   onCloseSession,
-  onCloseTerminal
+  onCloseTerminal,
+  projects,
+  onOpenProject,
+  onCreateProject,
+  onAssignProject,
+  onHandoff,
+  onHandBack
 }: SidebarProps) {
+  const [projectQuery, setProjectQuery] = useState('')
+  const projectIdOf = (session: SessionEntry): string | null =>
+    projects.find((project) =>
+      project.members.some(
+        (member) =>
+          member.agentId === session.adapterId &&
+          member.agentSessionKey === session.adapterSessionId
+      )
+    )?.id ?? null
   const strings = useStrings()
+  const query = projectQuery.trim().toLowerCase()
+  const visibleSessions = sessions.filter((session) => {
+    if (!query) return true
+    if (session.name.toLowerCase().includes(query)) return true
+    return projects.some(
+      (project) =>
+        project.members.some(
+          (member) =>
+            member.agentId === session.adapterId &&
+            member.agentSessionKey === session.adapterSessionId
+        ) &&
+        (project.name.toLowerCase().includes(query) ||
+          project.goal.toLowerCase().includes(query))
+    )
+  })
+  const orderedSessions = (): SessionEntry[] =>
+    [...visibleSessions].sort((left, right) => {
+      const leftProject = projectIdOf(left) ?? '\uffff'
+      const rightProject = projectIdOf(right) ?? '\uffff'
+      return leftProject.localeCompare(rightProject)
+    })
   const activeTerminalId = terminalIdFromPage(pageId)
   const activeDshSlotId = dshSlotIdFromPage(pageId)
   const [sessionMenu, setSessionMenu] = useState<{
@@ -104,6 +147,7 @@ export default function Sidebar({
     top: number
     left: number
   } | null>(null)
+  const [collapsedProjectIds, setCollapsedProjectIds] = useState<string[]>([])
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [renameError, setRenameError] = useState(false)
@@ -222,13 +266,19 @@ export default function Sidebar({
           <p className="mb-1.5 shrink-0 px-1 font-pingfang text-[11px] font-medium tracking-wide text-text-faint">
             {strings.navigation.sessions}
           </p>
+          <input
+            value={projectQuery}
+            onChange={(event) => setProjectQuery(event.target.value)}
+            placeholder={strings.navigation.findProject}
+            className="mb-2 w-full rounded-md border border-border-faint bg-content px-2 py-1 font-pingfang text-[11px] text-text-primary outline-none"
+          />
           {sessions.length === 0 && (
             <p className="px-1 py-0.5 font-pingfang text-[11px] text-text-disabled">
               {strings.navigation.emptySessions}
             </p>
           )}
           <ul data-testid="sidebar-session-list" className="flex flex-col gap-1.5 pr-1">
-          {sessions.map((session) => {
+          {orderedSessions().map((session, index, list) => {
             const children = childTerminals.filter(
               (terminal) => terminal.parentSessionId === session.sessionId
             )
@@ -240,11 +290,51 @@ export default function Sidebar({
             const menuOpen = sessionMenu?.sessionId === session.sessionId
             const renaming = renamingSessionId === session.sessionId
             const expanded = expandedSessionIds.includes(session.sessionId)
+            const projectId = projectIdOf(session)
+            const previousProject = index > 0 ? projectIdOf(list[index - 1]) : null
+            const showProject = Boolean(projectId && projectId !== previousProject)
+            const project = projects.find((item) => item.id === projectId)
+            const collapsed = Boolean(projectId && collapsedProjectIds.includes(projectId))
             return (
               <li
                 key={session.sessionId}
+                hidden={collapsed}
+                className="contents"
+              >
+              {showProject && project && (
+                <div className="flex items-center gap-1 px-1">
+                  <button
+                    type="button"
+                    data-testid="sidebar-project-toggle"
+                    aria-expanded={!collapsed}
+                    onClick={() =>
+                      setCollapsedProjectIds((current) =>
+                        current.includes(project.id)
+                          ? current.filter((id) => id !== project.id)
+                          : [...current, project.id]
+                      )
+                    }
+                    className="flex size-5 items-center justify-center text-text-faint"
+                  >
+                    <ChevronRight
+                      className={`size-3 transition-transform ${collapsed ? '' : 'rotate-90'}`}
+                      strokeWidth={1.75}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="sidebar-project"
+                    onClick={() => onOpenProject(project.id)}
+                    className="min-w-0 flex-1 truncate py-1 text-left font-pingfang text-[12px] font-medium text-text-secondary"
+                  >
+                    {project.name}
+                  </button>
+                </div>
+              )}
+              <div
                 data-navigation-terminal-id={session.terminalId}
                 data-navigation-root-id={session.terminalId}
+                hidden={collapsed}
                 className="group relative rounded-lg transition-colors hover:bg-hover"
               >
                 {/* 选中/运行中的左侧 2px 边条：当前打开 = 珊瑚，运行中未选中 = 琥珀（DESIGN-SPEC §4.3） */}
@@ -463,6 +553,7 @@ export default function Sidebar({
                     ))}
                   </ul>
                 )}
+              </div>
               </li>
             )
           })}
@@ -608,6 +699,68 @@ export default function Sidebar({
                   {strings.navigation.forkSessionGit}
                 </button>
               )}
+            </>
+          )}
+          {menuSession.adapterSessionId && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="sidebar-session-new-project"
+                onClick={() => {
+                  setSessionMenu(null)
+                  onCreateProject(menuSession)
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              >
+                {strings.navigation.newProject}
+              </button>
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setSessionMenu(null)
+                    onAssignProject(menuSession, project.id)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  {strings.navigation.moveToProject(project.name)}
+                </button>
+              ))}
+              {projects.some((project) =>
+                project.members.some(
+                  (member) =>
+                    member.agentId === menuSession.adapterId &&
+                    member.agentSessionKey === menuSession.adapterSessionId
+                )
+              ) && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="sidebar-session-handoff"
+                  onClick={() => {
+                    setSessionMenu(null)
+                    onHandoff(menuSession)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  {strings.navigation.handoff}
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="sidebar-session-hand-back"
+                onClick={() => {
+                  setSessionMenu(null)
+                  onHandBack(menuSession)
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              >
+                {strings.navigation.handBack}
+              </button>
             </>
           )}
           <button

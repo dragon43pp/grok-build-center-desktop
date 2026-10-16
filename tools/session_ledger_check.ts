@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { extractAgentSessionKey } from '../shared/session-ledger'
 import { SessionLedger } from '../electron/sessions/SessionLedger'
+import { parseProjectFile, renderProjectFile, appendProgress } from '../shared/project-file'
 
 let failed = 0
 function check(name: string, ok: boolean): void {
@@ -96,6 +97,9 @@ try {
   check('崩溃前还在跑的行会被降级', ledger.demoteStaleRunning() === 2)
   check('有钥匙的降级行进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-2'))
   check('主动停止的行不被降级成崩溃', ledger.get('asc-1')?.status === 'stopped')
+  ledger.renameSession('asc-3', '改过的名字')
+  check('改名写进当前这场', ledger.get('asc-3')?.name === '改过的名字')
+  check('有钥匙的改名写进名字表', ledger.lookupName('claude', 'ses_abc') === '改过的名字')
   ledger.close()
 
   const brokenDir = mkdtempSync(join(tmpdir(), 'asc-ledger-broken-'))
@@ -115,6 +119,11 @@ try {
 } finally {
   rmSync(dir, { recursive: true, force: true })
 }
+
+const project = parseProjectFile(renderProjectFile({ goal: '把前端做完', progress: '', rest: '' }))
+check('项目文件保留人写的目标', project.goal === '把前端做完')
+const noted = appendProgress(project, '交给 Antigravity：做登录页')
+check('进展补在目标后面', noted.progress.includes('登录页') && noted.goal === '把前端做完')
 
 if (failed > 0) {
   console.error(`${failed} checks failed`)

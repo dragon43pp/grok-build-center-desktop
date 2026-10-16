@@ -48,6 +48,8 @@ import type { StartAgentSession } from '../shared/agent-events'
 import type { AgentSessionRuntime } from './agents/AgentSessionRuntime'
 import { listAvailableShells } from './shells'
 import type { AiCliDiscoveryService } from './ai-cli-discovery'
+import type { SessionLedger } from './sessions/SessionLedger'
+import { ProjectStore } from './sessions/ProjectStore'
 import { displayRelativePosition } from './window'
 import { EventLog } from './events/EventLog'
 import { discoverSessions } from './sessions'
@@ -189,6 +191,8 @@ export interface IpcContext {
   eventLog: EventLog
   cliDiscovery: AiCliDiscoveryService
   agentRuntime: AgentSessionRuntime
+  sessionLedger: SessionLedger | undefined
+  projects: ProjectStore | undefined
   workspaceReader: WorkspaceReader
   dshHost: DshHostManager
   dshWire: DshWireProxy
@@ -837,7 +841,10 @@ export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
    */
   ipcMain.handle(SessionsInvokeChannel.Discover, (event, payload: unknown) => {
     requireMainWindow(event, ctx)
-    return discoverSessions(parseSessionsDiscoverRequest(payload))
+    return discoverSessions({
+      ...parseSessionsDiscoverRequest(payload),
+      names: ctx.sessionLedger
+    })
   })
 
   /**
@@ -914,6 +921,99 @@ export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
       return openDomesticWorkbuddy(raw)
     }
   )
+
+  ipcMain.handle(SessionsInvokeChannel.ListProjects, (event) => {
+    requireMainWindow(event, ctx)
+    return (ctx.projects?.list() ?? []).map((project) => {
+      const file = ctx.projects?.readFile(project)
+      return {
+        ...project,
+        goal: file?.goal ?? '',
+        members: ctx.projects?.members(project.id) ?? []
+      }
+    })
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.CreateProject, (event, payload: unknown) => {
+    requireMainWindow(event, ctx)
+    const raw = payload as { name?: unknown; cwd?: unknown }
+    if (!ctx.projects || typeof raw?.name !== 'string' || typeof raw.cwd !== 'string') {
+      return null
+    }
+    const project = ctx.projects.create(raw.name, raw.cwd)
+    return { ...project, goal: '', members: [] }
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.RenameProject, (event, payload: unknown) => {
+    requireMainWindow(event, ctx)
+    const raw = payload as { id?: unknown; name?: unknown }
+    if (!ctx.projects || typeof raw?.id !== 'string' || typeof raw.name !== 'string') {
+      return null
+    }
+    const project = ctx.projects.rename(raw.id, raw.name)
+    if (!project) return null
+    return {
+      ...project,
+      goal: ctx.projects.readFile(project).goal,
+      members: ctx.projects.members(project.id)
+    }
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.ReadProject, (event, id: unknown) => {
+    requireMainWindow(event, ctx)
+    if (!ctx.projects || typeof id !== 'string') return null
+    const project = ctx.projects.get(id)
+    if (!project) return null
+    const file = ctx.projects.readFile(project)
+    return { goal: file.goal, progress: file.progress }
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.SaveProject, (event, payload: unknown) => {
+    requireMainWindow(event, ctx)
+    const raw = payload as { id?: unknown; file?: { goal?: unknown; progress?: unknown } }
+    if (
+      !ctx.projects ||
+      typeof raw?.id !== 'string' ||
+      typeof raw.file?.goal !== 'string' ||
+      typeof raw.file.progress !== 'string'
+    ) {
+      return null
+    }
+    const current = ctx.projects.get(raw.id)
+    if (!current) return null
+    const existing = ctx.projects.readFile(current)
+    const saved = ctx.projects.saveFile(raw.id, {
+      goal: raw.file.goal.slice(0, 4000),
+      progress: raw.file.progress.slice(0, 8000),
+      rest: existing.rest
+    })
+    return saved ? { goal: saved.goal, progress: saved.progress } : null
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.AssignProject, (event, payload: unknown) => {
+    requireMainWindow(event, ctx)
+    const raw = payload as {
+      projectId?: unknown
+      agentId?: unknown
+      agentSessionKey?: unknown
+    }
+    if (
+      !ctx.projects ||
+      typeof raw?.projectId !== 'string' ||
+      typeof raw.agentId !== 'string' ||
+      typeof raw.agentSessionKey !== 'string'
+    ) {
+      return
+    }
+    ctx.projects.assign(raw.projectId, raw.agentId, raw.agentSessionKey)
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.NoteProject, (event, payload: unknown) => {
+    requireMainWindow(event, ctx)
+    const raw = payload as { id?: unknown; line?: unknown }
+    if (!ctx.projects || typeof raw?.id !== 'string' || typeof raw.line !== 'string') return
+    ctx.projects.note(raw.id, raw.line.slice(0, 500))
+  })
 
   /**
    * AI 助手（会话历史智能查找）。配置只存主进程 userData，apiKey 永不回传明文；

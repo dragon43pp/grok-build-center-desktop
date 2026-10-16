@@ -330,8 +330,29 @@ export const SessionsInvokeChannel = {
    * 省略 id 打开该产品库里最近一场；给出 id 时必须仍在未删除记录里。
    * 这是跳进客户端对应对话，不走 CLI 的 planResume。
    */
-  OpenWorkbuddy: 'sessions:open-workbuddy'
+  OpenWorkbuddy: 'sessions:open-workbuddy',
+  ListProjects: 'sessions:list-projects',
+  CreateProject: 'sessions:create-project',
+  RenameProject: 'sessions:rename-project',
+  ReadProject: 'sessions:read-project',
+  SaveProject: 'sessions:save-project',
+  AssignProject: 'sessions:assign-project',
+  NoteProject: 'sessions:note-project'
 } as const
+
+export interface ProjectSummary {
+  id: string
+  name: string
+  cwd: string
+  updatedAt: number
+  goal: string
+  members: Array<{ agentId: string; agentSessionKey: string }>
+}
+
+export interface ProjectFilePayload {
+  goal: string
+  progress: string
+}
 
 export interface SessionsTrashRequest {
   agent: AgentId
@@ -380,6 +401,17 @@ export interface SessionsApi {
   openWorkbuddy: (
     request?: SessionsOpenWorkbuddyRequest
   ) => Promise<SessionsOpenWorkbuddyResult>
+  listProjects: () => Promise<ProjectSummary[]>
+  createProject: (name: string, cwd: string) => Promise<ProjectSummary>
+  renameProject: (id: string, name: string) => Promise<ProjectSummary | null>
+  readProject: (id: string) => Promise<ProjectFilePayload | null>
+  saveProject: (id: string, file: ProjectFilePayload) => Promise<ProjectFilePayload | null>
+  assignProject: (
+    projectId: string,
+    agentId: string,
+    agentSessionKey: string
+  ) => Promise<void>
+  noteProject: (id: string, line: string) => Promise<void>
 }
 
 export type RecordEventInput = Pick<

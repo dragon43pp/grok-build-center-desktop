@@ -854,6 +854,7 @@ export class AgentSessionRuntime {
     const name = bounded(rawName, 128)?.trim()
     if (!session || session.finalized || !name) return null
     session.name = name
+    this.deps.ledger?.renameSession(session.sessionId, name)
     session.projection = {
       ...session.projection,
       name,
@@ -1252,7 +1253,15 @@ export class AgentSessionRuntime {
       return
     }
     const capturedKey = normalized.agentSessionKey?.trim()
-    if (capturedKey) this.deps.ledger?.captureKey(session.sessionId, capturedKey)
+    if (capturedKey) {
+      this.deps.ledger?.captureKey(session.sessionId, capturedKey)
+      // 钥匙刚到时，把用户已经改过的名字补进名字表。
+      const remembered = this.deps.ledger?.lookupName(session.adapterId, capturedKey)
+      const current = session.name.trim()
+      if (current && current !== remembered) {
+        this.deps.ledger?.rememberName(session.adapterId, capturedKey, current)
+      }
+    }
     this.recordTaskQuestion(session, normalized)
 
     const event: AgentEvent = {

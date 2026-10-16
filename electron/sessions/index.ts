@@ -129,6 +129,8 @@ const SPECS: Record<AgentId, ReaderSpec> = {
 export interface DiscoverOptions {
   /** Restrict the scan to some agents. Defaults to all seven. */
   agents?: readonly AgentId[]
+  /** 用户改过的名字。有钥匙就盖住 CLI 自己的标题。 */
+  names?: { lookupName(agentId: string, key: string): string | null }
   /** Point an agent at a fixture directory instead of its real one. */
   roots?: Partial<Record<AgentId, string | null>>
   /**
@@ -223,7 +225,12 @@ export async function discoverSessions(options: DiscoverOptions = {}): Promise<D
 
   const results = await Promise.all(specs.map((spec) => scanOne(spec, options)))
 
-  const sessions = sortSessions(results.flatMap((result) => result.sessions))
+  const sessions = sortSessions(results.flatMap((result) => result.sessions)).map(
+    (session) => {
+      const renamed = options.names?.lookupName(session.agent, session.id)
+      return renamed ? { ...session, title: renamed } : session
+    }
+  )
   return {
     sessions,
     results,

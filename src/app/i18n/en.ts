@@ -52,6 +52,11 @@ export const en = {
       `Could not create the worktree: ${reason}. You can cancel, or confirm to fork in the original directory.`,
     childTerminals: 'Expand or collapse child terminals',
     renameSession: 'Rename',
+    newProject: 'New project',
+    moveToProject: (name: string) => `Move into “${name}”`,
+    handoff: 'Hand off',
+    handBack: 'Hand back',
+    findProject: 'Find a project or session',
     sessionNameRequired: 'Session name is required'
   },
   sessionHistory: {

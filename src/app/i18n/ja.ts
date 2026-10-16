@@ -52,6 +52,11 @@ export const ja = {
       `worktree を作成できませんでした：${reason}。キャンセルするか、確認すると元のディレクトリでフォークします。`,
     childTerminals: '子ターミナルを展開または折りたたむ',
     renameSession: '名前を変更',
+    newProject: 'プロジェクトを作成',
+    moveToProject: (name: string) => `「${name}」に入れる`,
+    handoff: '別の助手に渡す',
+    handBack: '戻す',
+    findProject: 'プロジェクトまたはセッションを検索',
     sessionNameRequired: 'セッション名を入力してください'
   },
   sessionHistory: {

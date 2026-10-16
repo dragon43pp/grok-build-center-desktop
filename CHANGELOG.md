@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 
+## [1.0.11] - 2026-10-16
+
+这一版让改过的会话名留下来，并在会话上面加一层项目。交接和交回都记在同一个项目里。
+
+### 新增
+
+- **重命名跟着对话钥匙走。** 侧栏改名会写入账本。记下了 CLI 对话钥匙之后，再打开、按钥匙接回、在会话历史里查询，都用这个名字。没有钥匙的场次只改当前这一场，钥匙一到就补上。
+- **项目是会话上面的一层。** 一个项目对应一个目录和一份 `PROJECT.md`。目标由你写、你改。进展在交接和交回时补一句，你也能改。侧栏按项目折叠里面的会话。查找先对项目名和目标，再对会话名。
+- **同一个项目里交接。** 在已归入项目、并且记下钥匙的会话上，可以交给另一个已安装的助手。说明先给你看、改完再送出。对方在同一目录另开一场，开场读这份说明。交回时按原来的对话钥匙拉回，并把结果写进项目进展。
+
+### 说明
+
+- 项目只认 ASC 记下钥匙的会话。1.0.7 里关掉、当时没有钥匙的会话，仍然挂不进项目。
+- 本版本不带代码签名。
+
+---
+
+### English
+
+This release keeps a renamed session name, and adds a project above sessions. A handoff and a hand-back stay in the same project.
+
+### Added
+
+- **A rename follows the conversation key.** Renaming in the sidebar writes the ledger. After a CLI conversation key is saved, reopening, relaunching, and session-history search use that name. A session without a key changes only the current row until the key arrives.
+- **A project sits above sessions.** One project is one directory and one `PROJECT.md`. You write and edit the goal. A handoff or hand-back appends one progress line, which you can also edit. The sidebar folds the sessions inside a project. Search matches the project name and goal, then the session name.
+- **Handoff stays inside one project.** A session that belongs to a project and has a key can be handed to another installed assistant. You read and edit the brief before it is sent. The other assistant starts in the same directory and reads that brief. Handing back relaunches the original conversation key and writes the result into the project progress.
+
+### Notes
+
+- A project only accepts sessions whose key ASC has saved. Sessions closed under 1.0.7, before a key was saved, still cannot join a project.
+- This release is not code-signed.
+
 ## [1.0.10] - 2026-10-16
 
 这一版让程序自己检查并下载更新。下载完成后弹出确认，点一下就重启安装。

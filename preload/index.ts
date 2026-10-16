@@ -59,6 +59,7 @@ import {
   type SessionsApi,
   type SessionsDiscoverRequest,
   type SessionsOpenWorkbuddyRequest,
+  type ProjectFilePayload,
   type SessionsTrashRequest,
   type SpawnOptions,
   type StatsApi,
@@ -324,7 +325,23 @@ const sessionsApi: SessionsApi = {
   trash: (request: SessionsTrashRequest) =>
     ipcRenderer.invoke(SessionsInvokeChannel.TrashSession, request),
   openWorkbuddy: (request?: SessionsOpenWorkbuddyRequest) =>
-    ipcRenderer.invoke(SessionsInvokeChannel.OpenWorkbuddy, request)
+    ipcRenderer.invoke(SessionsInvokeChannel.OpenWorkbuddy, request),
+  listProjects: () => ipcRenderer.invoke(SessionsInvokeChannel.ListProjects),
+  createProject: (name: string, cwd: string) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.CreateProject, { name, cwd }),
+  renameProject: (id: string, name: string) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.RenameProject, { id, name }),
+  readProject: (id: string) => ipcRenderer.invoke(SessionsInvokeChannel.ReadProject, id),
+  saveProject: (id: string, file: ProjectFilePayload) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.SaveProject, { id, file }),
+  assignProject: (projectId: string, agentId: string, agentSessionKey: string) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.AssignProject, {
+      projectId,
+      agentId,
+      agentSessionKey
+    }),
+  noteProject: (id: string, line: string) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.NoteProject, { id, line })
 }
 
 const assistantApi: AssistantApi = {

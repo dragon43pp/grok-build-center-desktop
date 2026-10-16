@@ -43,6 +43,60 @@ export class SessionLedger {
     if (!columns.some((column) => column.name === 'terminal_id')) {
       this.db.exec('ALTER TABLE sessions ADD COLUMN terminal_id TEXT')
     }
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS session_names (
+        agent_id TEXT NOT NULL,
+        agent_session_key TEXT NOT NULL,
+        name TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (agent_id, agent_session_key)
+      )
+    `)
+  }
+
+  /** 用户改过的名字。按 CLI 和对话钥匙记，重启和历史查询都认这一份。 */
+  rememberName(
+    agentId: string,
+    key: string,
+    name: string,
+    now = Date.now()
+  ): void {
+    const trimmedKey = key.trim()
+    const trimmedName = name.trim().slice(0, 128)
+    if (!agentId.trim() || !trimmedKey || !trimmedName) return
+    this.db
+      .prepare(
+        `INSERT INTO session_names (agent_id, agent_session_key, name, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(agent_id, agent_session_key) DO UPDATE SET
+           name = excluded.name,
+           updated_at = excluded.updated_at`
+      )
+      .run(agentId, trimmedKey, trimmedName, now)
+  }
+
+  lookupName(agentId: string, key: string): string | null {
+    const row = this.db
+      .prepare(
+        `SELECT name FROM session_names
+         WHERE agent_id = ? AND agent_session_key = ?`
+      )
+      .get(agentId, key.trim()) as { name?: string } | undefined
+    const name = row?.name?.trim()
+    return name || null
+  }
+
+  /** 改当前这一场的账本名。有钥匙时同时写入名字表。 */
+  renameSession(id: string, name: string, now = Date.now()): void {
+    const trimmed = name.trim().slice(0, 128)
+    if (!trimmed) return
+    this.db
+      .prepare('UPDATE sessions SET name = ?, updated_at = ? WHERE id = ?')
+      .run(trimmed, now, id)
+    const row = this.get(id)
+    if (row?.agentSessionKey) {
+      this.rememberName(row.agentId, row.agentSessionKey, trimmed, now)
+    }
   }
 
   upsertRunning(input: SessionLedgerUpsert, now = Date.now()): void {
