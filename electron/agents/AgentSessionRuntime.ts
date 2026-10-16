@@ -1163,6 +1163,11 @@ export class AgentSessionRuntime {
     return this.deps.ledger?.demoteStaleRunning() ?? 0
   }
 
+  /** 安装或退出打断后，把没挂上宿主的 running 行补进重进名单。 */
+  repairInterruptedLedger(): number {
+    return this.deps.ledger?.repairInterrupted() ?? 0
+  }
+
   /**
    * 把审批或提问收成任务问题。
    * 问题 id 沿用 observer 的 requestId，飞书和命令行答的是同一题。

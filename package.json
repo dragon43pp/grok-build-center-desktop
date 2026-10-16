@@ -1,6 +1,6 @@
 {
   "name": "agent-session-center",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Session center for every AI coding agent — browse, resume, fork and handoff across Claude Code, Codex, OpenCode, Kimi, Pi, Antigravity and WorkBuddy, with Feishu push and mobile approval",
   "main": "out/main/index.js",
   "scripts": {

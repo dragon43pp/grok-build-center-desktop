@@ -249,7 +249,11 @@ const agentRuntime = new AgentSessionRuntime({
     broadcast: broadcastAgentChannel
   }
 })
-void agentRuntime.adoptLiveSessions().catch((error) => {
+void agentRuntime.adoptLiveSessions().then(() => {
+  // 安装更新会先停进程。账本可能还写着 running，重进标记却是 0。
+  // 活着的宿主行已经接回，剩下没挂上的行补进重进名单。
+  agentRuntime.repairInterruptedLedger()
+}).catch((error) => {
   console.error('[asc] live session adopt failed:', error)
   sessionLedger?.demoteStaleRunning()
 })

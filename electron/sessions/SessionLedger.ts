@@ -199,6 +199,33 @@ export class SessionLedger {
     return Number(result.changes ?? 0)
   }
 
+  /**
+   * 安装更新或退出时，进程停了，账本却还写着 running，重进标记也是 0。
+   * 这些行进不了重进名单，窗口重开就只剩匿名终端。
+   * 有钥匙的改成 crashed 并打上重进标记；没钥匙的标成 stopped，避免空拉起。
+   */
+  repairInterrupted(now = Date.now()): number {
+    const keyed = this.db
+      .prepare(
+        `UPDATE sessions
+         SET status = 'crashed', resume_on_launch = 1, updated_at = ?, stopped_at = ?
+         WHERE status = 'running'
+           AND (host_pty_id IS NULL OR host_pty_id = '')
+           AND agent_session_key IS NOT NULL AND agent_session_key != ''`
+      )
+      .run(now, now)
+    const bare = this.db
+      .prepare(
+        `UPDATE sessions
+         SET status = 'stopped', resume_on_launch = 0, updated_at = ?, stopped_at = ?
+         WHERE status = 'running'
+           AND (host_pty_id IS NULL OR host_pty_id = '')
+           AND (agent_session_key IS NULL OR agent_session_key = '')`
+      )
+      .run(now, now)
+    return Number(keyed.changes ?? 0) + Number(bare.changes ?? 0)
+  }
+
   listResumeOnLaunch(): SessionLedgerRow[] {
     const rows = this.db
       .prepare(

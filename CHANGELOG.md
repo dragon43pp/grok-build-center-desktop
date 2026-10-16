@@ -8,6 +8,26 @@
 
 ## [Unreleased]
 
+## [1.0.12] - 2026-10-16
+
+安装或退出打断后，有钥匙的会话会重新出现在「继续」里。项目在还没有会话挂上时也能在侧栏看见。
+
+### 修复
+
+- **重进名单补上被打断的会话。** 安装更新会先停掉进程。账本可能还写着「在跑」，重进标记却是 0，窗口重开就只剩 Terminal 1、Terminal 2 这种匿名终端。现在没挂上宿主、但已有对话钥匙的行会补进重进名单，打开后按钥匙拉回。没有钥匙的行标成已停止，避免空拉起变成另一场。
+- **项目不依赖会话先出现。** 侧栏在会话列表为空时仍列出项目，点开就能改目标和进展。
+
+---
+
+### English
+
+After an install or quit interrupts a session, a keyed session shows up in Continue again. A project stays visible in the sidebar before any session is attached.
+
+### Fixed
+
+- **Interrupted sessions return to the relaunch list.** An update stops the process first. The ledger can still say running while the relaunch flag stays off, so reopening shows only anonymous terminals. A running row with a conversation key and no host terminal is now marked for relaunch. A row without a key is marked stopped so it is not opened as a new conversation.
+- **A project does not wait for a session.** The sidebar lists projects even when the session list is empty. Opening one still edits the goal and progress.
+
 ## [1.0.11] - 2026-10-16
 
 这一版让改过的会话名留下来，并在会话上面加一层项目。交接和交回都记在同一个项目里。

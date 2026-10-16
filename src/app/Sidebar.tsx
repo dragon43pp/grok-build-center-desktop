@@ -272,7 +272,28 @@ export default function Sidebar({
             placeholder={strings.navigation.findProject}
             className="mb-2 w-full rounded-md border border-border-faint bg-content px-2 py-1 font-pingfang text-[11px] text-text-primary outline-none"
           />
-          {sessions.length === 0 && (
+          {projects
+            .filter((project) => {
+              if (!query) return true
+              return (
+                project.name.toLowerCase().includes(query) ||
+                project.goal.toLowerCase().includes(query)
+              )
+            })
+            .filter((project) => !orderedSessions().some((session) => projectIdOf(session) === project.id))
+            .map((project) => (
+              <button
+                key={project.id}
+                type="button"
+                data-testid="sidebar-project"
+                onClick={() => onOpenProject(project.id)}
+                className="mb-1 flex w-full items-center gap-1 rounded-lg px-1 py-1 text-left font-pingfang text-[12px] font-medium text-text-secondary hover:bg-hover"
+              >
+                <ChevronRight className="size-3 shrink-0 text-text-faint" strokeWidth={1.75} />
+                <span className="min-w-0 flex-1 truncate">{project.name}</span>
+              </button>
+            ))}
+          {sessions.length === 0 && projects.length === 0 && (
             <p className="px-1 py-0.5 font-pingfang text-[11px] text-text-disabled">
               {strings.navigation.emptySessions}
             </p>

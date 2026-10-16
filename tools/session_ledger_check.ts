@@ -94,7 +94,43 @@ try {
     rows: 24,
     agentSessionKey: 'agy-key'
   })
-  check('崩溃前还在跑的行会被降级', ledger.demoteStaleRunning() === 2)
+  ledger.upsertRunning({
+    id: 'asc-4',
+    agentId: 'grok',
+    installationId: 'grok-local',
+    name: '安装打断',
+    cwd: 'D:\\work',
+    args: ['--resume', '01a-key'],
+    cols: 80,
+    rows: 24,
+    agentSessionKey: '01a-key'
+  })
+  ledger.upsertRunning({
+    id: 'asc-5',
+    agentId: 'grok',
+    installationId: 'grok-local',
+    name: '还没钥匙',
+    cwd: 'D:\\work',
+    args: [],
+    cols: 80,
+    rows: 24
+  })
+  check('安装打断且有钥匙的行补进重进名单', ledger.repairInterrupted() === 4)
+  check('没挂宿主的有钥匙行可以重进', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-4'))
+  check('没钥匙的打断行不再假装在跑', ledger.get('asc-5')?.status === 'stopped')
+  check('挂着宿主、还在跑的行会被降级', ledger.demoteStaleRunning() === 0)
+  ledger.upsertRunning({
+    id: 'asc-6',
+    agentId: 'grok',
+    installationId: 'grok-local',
+    name: '宿主还记着',
+    cwd: 'D:\\work',
+    args: [],
+    cols: 80,
+    rows: 24,
+    hostPtyId: 'pty-live'
+  })
+  check('崩溃前还在跑的行会被降级', ledger.demoteStaleRunning() === 1)
   check('有钥匙的降级行进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-2'))
   check('主动停止的行不被降级成崩溃', ledger.get('asc-1')?.status === 'stopped')
   ledger.renameSession('asc-3', '改过的名字')
