@@ -31,8 +31,27 @@ async function forceUpdateAvailable(
   expect(ok).toBe(true)
 }
 
+async function forceUpdateDownloaded(
+  app: ElectronApplication,
+  version = '9.9.9',
+  releaseNotes = 'Test release notes'
+): Promise<void> {
+  const ok = await app.evaluate(
+    (_electron, args) =>
+      (
+        globalThis as unknown as {
+          __ascMainDebug: {
+            forceUpdateDownloaded(version: string, notes: string): boolean
+          }
+        }
+      ).__ascMainDebug.forceUpdateDownloaded(args.version, args.notes),
+    { version, notes: releaseNotes }
+  )
+  expect(ok).toBe(true)
+}
+
 test('shows update modal with release notes and can ignore this version', async () => {
-  await forceUpdateAvailable(app)
+  await forceUpdateDownloaded(app)
 
   const modal = page.getByTestId('update-available-modal')
   await expect(modal).toBeVisible()
@@ -45,7 +64,7 @@ test('shows update modal with release notes and can ignore this version', async 
 })
 
 test('renders markdown release notes instead of raw text', async () => {
-  await forceUpdateAvailable(
+  await forceUpdateDownloaded(
     app,
     '9.9.9',
     [
@@ -72,7 +91,7 @@ test('renders markdown release notes instead of raw text', async () => {
 })
 
 test('later keeps the update entry visible for a future retry', async () => {
-  await forceUpdateAvailable(app)
+  await forceUpdateDownloaded(app)
 
   const modal = page.getByTestId('update-available-modal')
   await expect(modal).toBeVisible()
@@ -83,25 +102,30 @@ test('later keeps the update entry visible for a future retry', async () => {
 })
 
 test('never stops future update modals from appearing', async () => {
-  await forceUpdateAvailable(app, '9.9.9', 'First notes')
+  await forceUpdateDownloaded(app, '9.9.9', 'First notes')
 
   const modal = page.getByTestId('update-available-modal')
   await expect(modal).toBeVisible()
   await page.getByTestId('update-available-never').click()
   await expect(modal).toBeHidden()
 
-  await forceUpdateAvailable(app, '10.0.0', 'Second notes')
+  await forceUpdateDownloaded(app, '10.0.0', 'Second notes')
   await expect(page.getByTestId('update-available-modal')).toHaveCount(0)
   // 只关闭弹窗，不隐藏手动更新入口。
   await expect(page.getByTestId('titlebar-update')).toBeVisible()
 })
 
-test('update action closes the modal and starts the download path', async () => {
+test('stays closed while an update is only available, then offers install once downloaded', async () => {
   await forceUpdateAvailable(app)
+  await expect(page.getByTestId('update-available-modal')).toHaveCount(0)
+  await expect(page.getByTestId('titlebar-update')).toBeVisible()
+
+  await forceUpdateDownloaded(app, '9.9.9', 'Ready to install')
 
   const modal = page.getByTestId('update-available-modal')
   await expect(modal).toBeVisible()
-
-  await page.getByTestId('update-available-submit').click()
-  await expect(modal).toBeHidden()
+  await expect(modal).toContainText('Ready to install')
+  await expect(page.getByTestId('update-available-submit')).toHaveText(
+    /重启并安装|Restart and install/
+  )
 })

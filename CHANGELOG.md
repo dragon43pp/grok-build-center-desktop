@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 
+## [1.0.10] - 2026-10-16
+
+这一版让程序自己检查并下载更新。下载完成后弹出确认，点一下就重启安装。
+
+### 新增
+
+- **打开后自己检查、自己下载。** 打包版启动后会去 GitHub Release 看有没有新版本。有的话直接下载，不再多点一次「下载更新」。
+- **下完就能装。** 下载完成后弹出更新说明。主按钮是「重启并安装」，点下去会退出当前窗口并装上新版本。设置里的「检查更新」仍然可以手动再查一次；已经下完时，同一处按钮也是重启安装。
+
+### 说明
+
+- 1.0.9 及更早的已安装版本还不会自己下载。先从这一版开始，之后的更新才会走这条路。
+- 安装包未签名。Windows 可能会提示未知发布者。
+- 1.0.9 的会话接回仍然有效：打开应用会接回还在跑、并且记下了对话钥匙的会话。
+
+---
+
+### English
+
+This release checks for updates and downloads them on its own. When the download finishes, one confirmation restarts the app and installs it.
+
+### Added
+
+- **Startup checks and downloads.** A packaged build looks at GitHub Releases after launch. A newer version downloads without a separate download click.
+- **Install when the file is ready.** The update notes appear after the download. The primary button is “Restart and install”; it quits the current window and installs the new version. Settings still has a manual check. When the file is already downloaded, that same button installs it.
+
+### Notes
+
+- Builds already installed at 1.0.9 or earlier do not download by themselves. This path starts with this release.
+- The installer is not code-signed. Windows may warn about an unknown publisher.
+- The 1.0.9 session restore still applies: opening the app brings back a session that is still running and has a saved conversation key.
+
 ## [1.0.9] - 2026-10-16
 
 这一版修正打开应用后不接回上次会话的问题。1.0.8 只重进已经退出的会话，窗口关掉但终端还在跑的那场不会出现。

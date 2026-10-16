@@ -547,11 +547,11 @@ const feishu = new FeishuService({
 })
 
 const updateService = new UpdateService({
-  // 打包版默认开启自动更新检查；排查与回归测试时可用 ASC_DISABLE_UPDATES=1 关掉。
+  // 打包版启动后自己检查并下载；排查与回归测试时可用 ASC_DISABLE_UPDATES=1 关掉。
   enabled: app.isPackaged && process.env.ASC_DISABLE_UPDATES !== '1',
   currentVersion: packageMetadata.version,
   driver: new ElectronUpdaterDriver(),
-  autoDownload: false,
+  autoDownload: true,
   initialCheckDelayMs: 0,
   broadcast: (snapshot) =>
     broadcastToAllWindows(UpdateEventChannel.StateChanged, snapshot),
@@ -801,6 +801,14 @@ if (isPrimaryInstance) app.whenReady().then(async () => {
       forceUpdateAvailable: (version: unknown, releaseNotes: unknown) => {
         if (typeof version !== 'string' || !version.trim()) return false
         updateService.debugSetAvailable(
+          version.trim(),
+          typeof releaseNotes === 'string' ? releaseNotes : null
+        )
+        return true
+      },
+      forceUpdateDownloaded: (version: unknown, releaseNotes: unknown) => {
+        if (typeof version !== 'string' || !version.trim()) return false
+        updateService.debugSetDownloaded(
           version.trim(),
           typeof releaseNotes === 'string' ? releaseNotes : null
         )

@@ -733,6 +733,7 @@ export const ko = {
     releaseNotes: '업데이트 내역',
     noReleaseNotes: '업데이트 내역이 없습니다',
     update: '지금 업데이트',
+    install: '다시 시작하고 설치',
     ignore: '이 버전 무시',
     never: '다시 표시하지 않음',
     later: '나중에'

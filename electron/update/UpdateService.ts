@@ -175,6 +175,15 @@ export class UpdateService {
     })
   }
 
+  /** E2E/调试：模拟安装包已经下完，弹窗主按钮应直接重启安装。 */
+  debugSetDownloaded(version: string, releaseNotes: string | null = null): void {
+    this.onDownloaded({
+      version,
+      releaseDate: null,
+      releaseNotes
+    })
+  }
+
   dispose(): void {
     if (this.disposed) return
     this.disposed = true

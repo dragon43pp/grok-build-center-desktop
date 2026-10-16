@@ -6,6 +6,8 @@ import MarkdownBody from '../markdown/MarkdownBody'
 interface UpdateAvailableModalProps {
   version: string
   releaseNotes: string | null
+  /** 安装包已经下完，主按钮直接重启安装。 */
+  ready?: boolean
   onUpdate: () => void
   onIgnore: () => void
   onNever: () => void
@@ -15,6 +17,7 @@ interface UpdateAvailableModalProps {
 export default function UpdateAvailableModal({
   version,
   releaseNotes,
+  ready = false,
   onUpdate,
   onIgnore,
   onNever,
@@ -117,7 +120,7 @@ export default function UpdateAvailableModal({
               className="rounded-lg bg-button-primary px-3 py-1.5 font-pingfang text-[12px] font-medium text-button-primary-fg transition-colors hover:bg-button-primary-hover"
               onClick={onUpdate}
             >
-              {strings.updateModal.update}
+              {ready ? strings.updateModal.install : strings.updateModal.update}
             </button>
           </div>
         </motion.div>

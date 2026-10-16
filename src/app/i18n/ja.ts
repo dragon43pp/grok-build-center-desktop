@@ -732,6 +732,7 @@ export const ja = {
     releaseNotes: '更新内容',
     noReleaseNotes: '更新内容はありません',
     update: '今すぐ更新',
+    install: '再起動してインストール',
     ignore: 'このバージョンを無視',
     never: '今後表示しない',
     later: '後で'

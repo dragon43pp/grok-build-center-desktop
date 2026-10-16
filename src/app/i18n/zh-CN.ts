@@ -734,6 +734,7 @@ export const zhCN = {
     releaseNotes: '更新说明',
     noReleaseNotes: '暂无更新说明',
     update: '立即更新',
+    install: '重启并安装',
     ignore: '忽略此版本',
     never: '以后不再弹出',
     later: '稍后'

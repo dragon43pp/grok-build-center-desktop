@@ -125,6 +125,7 @@ export default function AppShell() {
     useState<SettingsCategory>('appearance')
   const [updateSnapshot, setUpdateSnapshot] =
     useState<UpdateSnapshot | null>(null)
+  const [updateModalReady, setUpdateModalReady] = useState(false)
   const [updateModalVersion, setUpdateModalVersion] =
     useState<string | null>(null)
   const [updateModalReleaseNotes, setUpdateModalReleaseNotes] =
@@ -360,10 +361,10 @@ export default function AppShell() {
     }
   }, [])
 
-  // 发现新版本且用户未忽略/未在本会话稍后关闭时，弹出更新确认框。
+  // 安装包下完，且用户未忽略、未在本会话稍后关闭时，弹出重启安装确认。
   useEffect(() => {
     if (updateModalDisabled) return
-    if (updateSnapshot?.phase !== 'available' || !updateSnapshot.availableVersion) {
+    if (updateSnapshot?.phase !== 'downloaded' || !updateSnapshot.availableVersion) {
       return
     }
     const version = updateSnapshot.availableVersion
@@ -373,6 +374,7 @@ export default function AppShell() {
     ) {
       return
     }
+    setUpdateModalReady(true)
     setUpdateModalVersion(version)
     setUpdateModalReleaseNotes(updateSnapshot.releaseNotes)
   }, [
@@ -457,7 +459,10 @@ export default function AppShell() {
       setUpdateModalDismissedVersion(updateModalVersion)
     }
     setUpdateModalVersion(null)
-    void window.updateApi.download().catch(() => {})
+    const action = updateModalReady
+      ? window.updateApi.install()
+      : window.updateApi.download()
+    void action.catch(() => {})
   }
 
   const navigate = useCallback(
@@ -1704,6 +1709,7 @@ export default function AppShell() {
             key={updateModalVersion}
             version={updateModalVersion}
             releaseNotes={updateModalReleaseNotes}
+            ready={updateModalReady}
             onUpdate={applyUpdateModal}
             onIgnore={ignoreUpdateModal}
             onNever={neverUpdateModal}

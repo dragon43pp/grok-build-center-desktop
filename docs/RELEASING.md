@@ -207,7 +207,7 @@ prereleases.
 
 ## Application update contract
 
-Packaged Agent Session Center clients check the public `fatedawn/agent-session-center` Release feed once at startup. Updates are announced but never downloaded in the background; the user stays in control of when to install. Set `ASC_DISABLE_UPDATES=1` to skip update checks entirely (useful for regression testing). Development builds do not contact the update service.
+Packaged Agent Session Center clients check the public `fatedawn/agent-session-center` Release feed at startup and again every six hours. A newer release is downloaded in the background. When the file is ready, the app asks once; confirming restarts and installs it. Settings can still check, download, or install by hand. Set `ASC_DISABLE_UPDATES=1` to skip update checks entirely (useful for regression testing). Development builds do not contact the update service.
 
 Never upload only the installer/package files. `electron-updater` discovers releases through the platform metadata file, and every file referenced by that metadata must be attached to the same GitHub Release. The guarded release scripts validate this before copying anything into `artifacts/`.
 

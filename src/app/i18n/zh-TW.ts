@@ -726,6 +726,7 @@ export const zhTW = {
     releaseNotes: '更新說明',
     noReleaseNotes: '暫無更新說明',
     update: '立即更新',
+    install: '重新啟動並安裝',
     ignore: '忽略此版本',
     never: '以後不再彈出',
     later: '稍後'

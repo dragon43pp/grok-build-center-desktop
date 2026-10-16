@@ -737,6 +737,7 @@ export const en = {
     releaseNotes: 'Release notes',
     noReleaseNotes: 'No release notes available',
     update: 'Update now',
+    install: 'Restart and install',
     ignore: 'Ignore this version',
     never: "Don't ask again",
     later: 'Later'
