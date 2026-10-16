@@ -28,6 +28,9 @@ function Assert-ReleaseConfig {
   if ($package.build.nsis.allowToChangeInstallationDirectory -ne $true) {
     throw 'NSIS must allow the user to choose the installation directory.'
   }
+  if ([string]$package.build.nsis.include -ne 'build/installer.nsh') {
+    throw 'NSIS must include build/installer.nsh so a fresh install defaults off the system drive.'
+  }
   $winIcon = Join-Path $workspace ([string]$package.build.win.icon)
   if (-not (Test-Path -LiteralPath $winIcon -PathType Leaf)) {
     throw "Windows application icon is missing: $winIcon"

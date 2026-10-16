@@ -8,6 +8,28 @@
 
 ## [Unreleased]
 
+## [1.0.14] - 2026-10-17
+
+安装时可以选择目录，首次安装默认到 D 盘。
+
+### 变更
+
+- **安装向导可以选择任意盘。** 目录页还在。D 盘存在、而且这台机器还没装过时，默认目录是 `D:\Agent Session Center`，不再落在当前用户的 AppData。
+- **已经装过的机器保持原目录。** 升级不会把文件悄悄搬到 D 盘。要换盘，请自己运行安装包，在目录页改路径。应用内的「重启并安装」会留在当前目录。
+- **新建项目先起名字，再选主目录。** 名字和文件夹是两件事，不必相同。会话仍按项目挂上去，不按文件夹名归类。确认后项目出现在侧栏，并打开目标页。
+
+---
+
+### English
+
+The installer lets you pick a folder. A first install defaults to drive D.
+
+### Changed
+
+- **The wizard can install on any drive.** The directory page remains. When D: exists and nothing is installed yet, the default folder is `D:\Agent Session Center` instead of the current user's AppData.
+- **An existing install stays where it is.** An upgrade does not move files to D:. To move, run the setup yourself and change the folder. In-app restart-and-install keeps the current folder.
+- **A new project starts with a name, then a home directory.** The name and the folder are separate. Sessions still join by project, not by folder name. After confirm, the project appears in the sidebar and its goal page opens.
+
 ## [1.0.13] - 2026-10-16
 
 项目可以单独新建。打开项目后，可以在这个项目里再开一场会话。

@@ -24,7 +24,7 @@ npm run release:win
 The Windows release fails before delivery when any of these conditions is not met:
 
 - NSIS is a guided installer (`oneClick: false`).
-- The installation directory can be changed.
+- The installation directory can be changed. A fresh install defaults to `D:\Agent Session Center` when `D:` exists; an existing install keeps its registered folder. In-app updates pass `--updated` and stay in the current folder.
 - The application and installer use the Agent Session Center icon rather than Electron's default icon.
 - All black, white, and macOS template tray PNGs exist in the packaged resources directory.
 - Remote source submodules, prior build outputs, development state, logs, and local `*.dsh` data never enter `app.asar`.

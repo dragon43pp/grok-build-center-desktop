@@ -31,6 +31,7 @@ import type { TaskQuestionRow } from '../../shared/task-ledger'
 import UsagePage from './UsagePage'
 import NewSessionFlow from './NewSessionFlow'
 import CloseSessionDialog from './CloseSessionDialog'
+import NewProjectDialog from './NewProjectDialog'
 import UpdateAvailableModal from './UpdateAvailableModal'
 import TargetCursor from './effects/TargetCursor'
 import SidebarTint from './SidebarTint'
@@ -173,6 +174,10 @@ export default function AppShell() {
     useState<DshSurfaceSnapshot | null>(null)
   const pendingCliLaunches = useRef(new Map<string, PendingCliLaunch>())
   const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [pendingProject, setPendingProject] = useState<{
+    cwd: string
+    defaultName: string
+  } | null>(null)
   const [openProjectId, setOpenProjectId] = useState<string | null>(null)
   const [projectFile, setProjectFile] = useState<ProjectFilePayload | null>(null)
   const [handoffDraft, setHandoffDraft] = useState<{
@@ -1305,31 +1310,42 @@ export default function AppShell() {
     })
   }, [])
 
-  const startBlankProject = useCallback((): void => {
-    const hostRuntime = {
+  const hostPickRuntime = useCallback(
+    () => ({
       kind: 'host' as const,
-      platform:
-        navigator.platform.toLowerCase().includes('mac')
-          ? ('macos' as const)
-          : navigator.platform.toLowerCase().includes('linux')
-            ? ('linux' as const)
-            : ('windows' as const)
-    }
-    void window.dialogApi
-      .pickDirectory({ runtime: hostRuntime })
-      .then((cwd) => {
-        if (!cwd) return
-        const fallback = cwd.split(/[/\\]/).filter(Boolean).pop() || '未命名项目'
-        const name = window.prompt('项目名称', fallback)?.trim()
-        if (!name) return
-        return window.sessionsApi.createProject(name, cwd)
-      })
-      .then((project) => {
-        if (!project) return
+      platform: navigator.platform.toLowerCase().includes('mac')
+        ? ('macos' as const)
+        : navigator.platform.toLowerCase().includes('linux')
+          ? ('linux' as const)
+          : ('windows' as const)
+    }),
+    []
+  )
+
+  const startBlankProject = useCallback((): void => {
+    setPendingProject({ cwd: '', defaultName: '' })
+  }, [])
+
+  const pickProjectDirectory = useCallback(async (): Promise<string | null> => {
+    const cwd = await window.dialogApi.pickDirectory({ runtime: hostPickRuntime() })
+    return cwd || null
+  }, [hostPickRuntime])
+
+  const confirmNewProject = useCallback(
+    (name: string, cwd: string): void => {
+      if (!name.trim() || !cwd.trim()) return
+      setPendingProject(null)
+      void window.sessionsApi.createProject(name.trim(), cwd.trim()).then((project) => {
+        if (!project) {
+          setRelaunchNotice(strings.navigation.projectCreateFailed)
+          return
+        }
         refreshProjects()
         openProject(project.id)
       })
-  }, [openProject, refreshProjects])
+    },
+    [openProject, refreshProjects, strings.navigation.projectCreateFailed]
+  )
 
   const createProjectFor = useCallback(
     (session: SessionEntry): void => {
@@ -1996,6 +2012,16 @@ export default function AppShell() {
       />
 
       <AnimatePresence>
+        {pendingProject && (
+          <NewProjectDialog
+            key="new-project"
+            defaultName={pendingProject.defaultName}
+            initialCwd={pendingProject.cwd}
+            onCancel={() => setPendingProject(null)}
+            onPickDirectory={pickProjectDirectory}
+            onConfirm={confirmNewProject}
+          />
+        )}
         {pendingCloseSession && (
           <CloseSessionDialog
             key={pendingCloseSession.sessionId}
