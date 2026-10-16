@@ -25,6 +25,7 @@ import SessionHistoryPage from './SessionHistoryPage'
 import { formatArgs, planFork, planResume } from '../../shared/session-resume'
 import type { AgentId, HistorySession } from '../../shared/session-history'
 import type { SessionLedgerRow } from '../../shared/session-ledger'
+import type { TaskQuestionRow } from '../../shared/task-ledger'
 import UsagePage from './UsagePage'
 import NewSessionFlow from './NewSessionFlow'
 import CloseSessionDialog from './CloseSessionDialog'
@@ -154,6 +155,9 @@ export default function AppShell() {
   const [cliScanning, setCliScanning] = useState(true)
   const [cliScanError, setCliScanError] = useState<string | null>(null)
   const [relaunchRows, setRelaunchRows] = useState<SessionLedgerRow[]>([])
+  const [liveSessionIds, setLiveSessionIds] = useState<string[]>([])
+  const [openQuestions, setOpenQuestions] = useState<TaskQuestionRow[]>([])
+  const [questionDrafts, setQuestionDrafts] = useState<Record<string, string>>({})
   const [relaunchNotice, setRelaunchNotice] = useState<string | null>(null)
   const [dshRuntimeReport, setDshRuntimeReport] =
     useState<DshRuntimeScanReport | null>(null)
@@ -243,9 +247,13 @@ export default function AppShell() {
           exited: false
         }))
       if (recoverable.length > 0) restoreTerminals(recoverable)
+      setLiveSessionIds(rows.map((row) => row.id))
     })
     void window.agentApi.listResumeOnLaunch().then((rows) => {
       if (!cancelled) setRelaunchRows(rows)
+    })
+    void window.agentApi.listTaskQuestions().then((rows) => {
+      if (!cancelled) setOpenQuestions(rows)
     })
     return () => {
       cancelled = true
@@ -805,8 +813,8 @@ export default function AppShell() {
   )
 
   const relaunchLedgerRow = useCallback(
-    async (row: SessionLedgerRow): Promise<void> => {
-      if (!row.agentSessionKey) return
+    async (row: SessionLedgerRow): Promise<boolean> => {
+      if (!row.agentSessionKey) return false
       const probe = await window.agentApi.probeConversation(
         row.agentId,
         row.agentSessionKey
@@ -815,7 +823,7 @@ export default function AppShell() {
         await window.agentApi.dismissResume(row.id)
         setRelaunchRows((current) => current.filter((item) => item.id !== row.id))
         setRelaunchNotice(strings.sessionHistory.relaunchMissingFile)
-        return
+        return false
       }
       const option =
         cliReport?.launchable.find(
@@ -826,7 +834,7 @@ export default function AppShell() {
       const installation =
         option?.installations.find((item) => item.id === row.installationId) ??
         option?.installations[0]
-      if (!option || !installation) return
+      if (!option || !installation) return false
       setRelaunchRows((current) => current.filter((item) => item.id !== row.id))
       await launchCli({
         option,
@@ -836,9 +844,28 @@ export default function AppShell() {
         args: formatArgs(row.args),
         skipApproval: true
       })
+      return true
     },
     [cliReport, launchCli]
   )
+
+  const autoResumeStarted = useRef(false)
+  useEffect(() => {
+    if (!cliReport || relaunchRows.length === 0 || autoResumeStarted.current) return
+    autoResumeStarted.current = true
+    const rows = relaunchRows.slice(0, 8)
+    void (async () => {
+      const blocked = new Set<string>()
+      for (const row of rows) {
+        const started = await relaunchLedgerRow(row)
+        if (!started) blocked.add(row.id)
+      }
+      if (blocked.size > 0) {
+        setRelaunchRows((current) => current.filter((row) => blocked.has(row.id)))
+        autoResumeStarted.current = false
+      }
+    })()
+  }, [cliReport, relaunchLedgerRow, relaunchRows])
 
   /**
    * 从侧栏把一场会话「分叉」继续：同一份历史，全新的 session id，原会话不动。
@@ -1354,6 +1381,90 @@ export default function AppShell() {
 
   return (
     <div className="app-shell isolate relative flex h-full w-full select-none flex-col overflow-hidden">
+      {openQuestions.length > 0 ? (
+        <div className="relative z-20 mx-3 mt-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-sm">
+          <div className="font-medium">{strings.sessionHistory.openQuestionsTitle}</div>
+          <div className="mt-1 text-[var(--muted)]">
+            {strings.sessionHistory.openQuestionsBody(openQuestions.length)}
+          </div>
+          <div className="mt-3 flex flex-col gap-3">
+            {openQuestions.slice(0, 3).map((question) => {
+              const live = liveSessionIds.includes(question.sessionId)
+              const draft = questionDrafts[question.id] ?? ''
+              return (
+                <form
+                  key={question.id}
+                  className="flex flex-col gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    const submitter = (event.nativeEvent as SubmitEvent).submitter
+                    const picked = submitter?.getAttribute('data-choice')?.trim() ?? ''
+                    const answer = picked || (question.choices.length === 0 ? draft.trim() : '')
+                    if (!answer) return
+                    void window.agentApi.answerTaskQuestion(question.id, answer).then((result) => {
+                      if (!result) {
+                        setRelaunchNotice(strings.sessionHistory.answerNotDelivered)
+                        return
+                      }
+                      setOpenQuestions((current) =>
+                        current.filter((item) => item.id !== question.id)
+                      )
+                      setRelaunchNotice(
+                        result.alreadyAnswered
+                          ? strings.sessionHistory.answerKept
+                          : result.delivered
+                            ? strings.sessionHistory.answerDelivered
+                            : strings.sessionHistory.answerNotDelivered
+                      )
+                    })
+                  }}
+                >
+                  <div>{question.prompt}</div>
+                  {live ? (
+                    <div className="flex gap-2">
+                      {question.choices.length > 0 ? (
+                        question.choices.map((choice) => (
+                          <button
+                            key={choice}
+                            type="submit"
+                            data-choice={choice}
+                            className="rounded-lg border border-[var(--line)] px-2 py-1"
+                          >
+                            {choice}
+                          </button>
+                        ))
+                      ) : (
+                        <>
+                          <input
+                            className="min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-transparent px-2 py-1"
+                            value={draft}
+                            onChange={(event) =>
+                              setQuestionDrafts((current) => ({
+                                ...current,
+                                [question.id]: event.target.value
+                              }))
+                            }
+                          />
+                          <button
+                            type="submit"
+                            className="rounded-lg bg-[var(--accent)] px-3 py-1 text-white"
+                          >
+                            {strings.sessionHistory.answerQuestion}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-[var(--muted)]">
+                      {strings.sessionHistory.answerNeedsRelaunch}
+                    </div>
+                  )}
+                </form>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
       {relaunchNotice ? (
         <div className="relative z-20 mx-3 mt-2 rounded-xl border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)]">
           {relaunchNotice}

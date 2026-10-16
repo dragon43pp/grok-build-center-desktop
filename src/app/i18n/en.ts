@@ -118,6 +118,14 @@ export const en = {
     relaunchAll: 'Continue all',
     relaunchDismiss: 'Not now',
     relaunchMissingFile: 'That conversation file is gone, so it was not relaunched.',
+    openQuestionsTitle: 'Questions are still open',
+    openQuestionsBody: (count: number) =>
+      `${count} still waiting. Answer directly while the session is alive; relaunch first if it already exited.`,
+    answerQuestion: 'Submit',
+    answerNeedsRelaunch: 'Relaunch this one first',
+    answerDelivered: 'Answered.',
+    answerKept: 'This question already has an answer.',
+    answerNotDelivered: 'The answer was saved, but it did not reach the terminal.',
     resumeFailed: (reason: string) => `Could not resume: ${reason}`,
     resumeBlockedSubagent:
       'A sub-agent session belongs to another session; resuming it alone is meaningless',

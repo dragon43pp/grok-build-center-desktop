@@ -792,6 +792,17 @@ export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
   ipcMain.handle(AgentInvokeChannel.ListLiveAttached, () =>
     ctx.agentRuntime.listLiveAttached()
   )
+  ipcMain.handle(AgentInvokeChannel.ListTaskQuestions, () =>
+    ctx.agentRuntime.listTaskQuestions()
+  )
+  ipcMain.handle(AgentInvokeChannel.AnswerTaskQuestion, (_event, payload: unknown) => {
+    const raw =
+      payload && typeof payload === 'object'
+        ? (payload as { questionId?: unknown; answer?: unknown })
+        : {}
+    if (typeof raw.questionId !== 'string' || typeof raw.answer !== 'string') return null
+    return ctx.agentRuntime.answerTaskQuestion(raw.questionId, raw.answer, 'window')
+  })
   ipcMain.handle(AgentInvokeChannel.DismissResume, (_event, sessionId: unknown) => {
     if (typeof sessionId !== 'string' || sessionId.length > 128) return
     ctx.agentRuntime.dismissResume(sessionId)

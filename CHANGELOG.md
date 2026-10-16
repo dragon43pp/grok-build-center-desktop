@@ -8,6 +8,42 @@
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-10-16
+
+这一版让关掉窗口之后的会话还能接上。终端留在单独的宿主里；宿主也没了，第二天打开会按记下的对话钥匙重新拉起。
+
+### 新增
+
+- **关掉窗口，终端还在。** 终端改由一个单独的 Node 宿主握着。窗口关掉或崩了，再打开会接回原来那场，不新开进程。托盘里选退出，才会停掉这些终端。
+- **第二天打开，按钥匙重新拉起。** 宿主也没了的时候，已经记下 CLI 对话钥匙、对话文件还在的会话，打开应用后会自己重新拉起，最多 8 场。文件不在的会跳过。这是重新打开对话，不是把昨天的进程留了一夜。
+- **没答完的问题还在。** 打开后顶部列出还没答的问题。会话还活着可以直接答；已经退出的要先重进。同一题只认第一次答案。飞书 `/问题`、`/答` 和 `asc tasks` 用同一个问题编号。
+
+### 说明
+
+- 钩子跟着窗口。窗口没起来的那段时间，新的审批不会记进账本。
+- 开机不会自己打开应用。要接上次的会话，需要先打开它。
+- WorkBuddy 和桌面 Grok Bot 仍是打开客户端里的那场，不走这条恢复。
+- 本版本不带代码签名。安装包体积以本次打包产物为准。
+
+---
+
+### English
+
+This release keeps sessions available after the window closes. The terminal stays in a separate host; when that host is gone too, the next launch relaunches sessions from their saved conversation keys.
+
+### Added
+
+- **Closing the window leaves the terminal running.** A separate Node host owns the terminals. Reopening the window attaches the same session instead of starting a new process. Choosing Quit from the tray stops those terminals.
+- **The next day relaunches from the saved key.** When the host is gone, sessions that have a CLI conversation key and a conversation file still on disk relaunch themselves, up to 8. A missing file is skipped. This opens the conversation again; it does not keep yesterday's process alive overnight.
+- **Unanswered questions stay listed.** Open questions appear at the top. A live session can be answered directly; an exited session needs a relaunch first. The first answer wins. Feishu `/问题`, `/答`, and `asc tasks` share the same question id.
+
+### Notes
+
+- Hooks stay with the window. Approvals that happen while the window is closed are not written to the ledger.
+- The app does not start itself at logon. Open it to pick up the previous sessions.
+- WorkBuddy and the Grok Bot desktop app still open the client conversation; they do not use this resume path.
+- This release is not code-signed. Installer size is the size of this build.
+
 ## [1.0.7] - 2026-10-13
 
 这一版给侧栏会话加了会话分叉（Fork），一条对话可以从任意节点复制出另一条继续聊。

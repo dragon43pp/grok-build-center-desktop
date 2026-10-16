@@ -7,6 +7,7 @@
  */
 
 import type { SessionLedgerRow } from './session-ledger'
+import type { TaskQuestionRow } from './task-ledger'
 import type { CliLaunchSelection } from './ipc-contract'
 
 // ───── AgentEvent 统一事件模型（PLAN-S1 §4）─────────────
@@ -308,6 +309,12 @@ export interface AgentApi {
   dismissResume(sessionId: string): Promise<void>
   /** 窗口重开后，宿主里还活着的终端。界面用它重连，不新开进程。 */
   listLiveAttached(): Promise<SessionLedgerRow[]>
+  /** 窗口重开后仍未作答的问题。活着的会话可以接着答。 */
+  listTaskQuestions(): Promise<TaskQuestionRow[]>
+  answerTaskQuestion(
+    questionId: string,
+    answer: string
+  ): Promise<{ ok: true; alreadyAnswered: boolean; delivered: boolean } | null>
   onEvents(cb: (events: AgentEvent[]) => void): () => void
   onProjection(cb: (projection: AgentSessionProjection) => void): () => void
 }
@@ -321,7 +328,9 @@ export const AgentInvokeChannel = {
   ListResumeOnLaunch: 'agent:list-resume-on-launch',
   ProbeConversation: 'agent:probe-conversation',
   DismissResume: 'agent:dismiss-resume',
-  ListLiveAttached: 'agent:list-live-attached'
+  ListLiveAttached: 'agent:list-live-attached',
+  ListTaskQuestions: 'agent:list-task-questions',
+  AnswerTaskQuestion: 'agent:answer-task-question'
 } as const
 
 export const AgentEventChannel = {

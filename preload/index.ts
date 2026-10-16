@@ -358,6 +358,10 @@ const agentApi: AgentApi = {
     ipcRenderer.invoke(AgentInvokeChannel.DismissResume, sessionId),
   listLiveAttached: () =>
     ipcRenderer.invoke(AgentInvokeChannel.ListLiveAttached),
+  listTaskQuestions: () =>
+    ipcRenderer.invoke(AgentInvokeChannel.ListTaskQuestions),
+  answerTaskQuestion: (questionId: string, answer: string) =>
+    ipcRenderer.invoke(AgentInvokeChannel.AnswerTaskQuestion, { questionId, answer }),
   onEvents: (cb) => {
     const handler = (_event: IpcRendererEvent, events: unknown): void => {
       if (Array.isArray(events) && events.length <= 500) {
