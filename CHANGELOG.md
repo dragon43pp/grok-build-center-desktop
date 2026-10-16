@@ -8,6 +8,28 @@
 
 ## [Unreleased]
 
+## [1.0.13] - 2026-10-16
+
+项目可以单独新建。打开项目后，可以在这个项目里再开一场会话。
+
+### 新增
+
+- **侧栏有「新建项目」。** 先选目录，再填名字。项目会出现在侧栏，点开就能写目标和进展。
+- **项目里可以新建会话。** 打开项目后，点「在此项目新建会话」。选择器和顶栏「新建」是同一套，目录预填成这个项目。记下对话钥匙后，这场会话自动归进项目。
+- 顶栏和侧栏原来的「新建」还在，不进项目也能自己开一场。
+
+---
+
+### English
+
+A project can be created on its own. After it is open, a new session can start inside it.
+
+### Added
+
+- **The sidebar has New project.** Pick a directory, then a name. The project appears in the sidebar, and opening it edits the goal and progress.
+- **A project can start a session.** Open the project and choose New session in this project. The picker is the same as New, with the directory filled from the project. Once the conversation key is saved, the session joins the project.
+- The existing New entry still starts a session that does not belong to a project.
+
 ## [1.0.12] - 2026-10-16
 
 安装或退出打断后，有钥匙的会话会重新出现在「继续」里。项目在还没有会话挂上时也能在侧栏看见。

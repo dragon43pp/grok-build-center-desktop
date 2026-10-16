@@ -53,6 +53,7 @@ export const en = {
     childTerminals: 'Expand or collapse child terminals',
     renameSession: 'Rename',
     newProject: 'New project',
+    newSessionInProject: 'New session in this project',
     moveToProject: (name: string) => `Move into “${name}”`,
     handoff: 'Hand off',
     handBack: 'Hand back',

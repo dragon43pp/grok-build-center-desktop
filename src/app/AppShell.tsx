@@ -79,7 +79,7 @@ import { parseJoinUrl } from '../../shared/remote-protocol'
  * 那种情况等于让用户换一个目录续一场旧会话，命令必须让他过一眼。
  */
 type NewSessionIntent =
-  | { kind: 'sheet' }
+  | { kind: 'sheet'; workspace?: string }
   | { kind: 'terminal' }
   | {
       kind: 'cli'
@@ -183,7 +183,7 @@ export default function AppShell() {
     returning: boolean
   } | null>(null)
   const pendingProjectAssign = useRef<{
-    terminalId: string
+    terminalId?: string
     projectId: string
   } | null>(null)
   const pendingBridgeLaunches = useRef(new Map<string, PendingBridgeLaunch>())
@@ -1297,6 +1297,40 @@ export default function AppShell() {
     refreshProjects()
   }, [refreshProjects])
 
+  const openProject = useCallback((projectId: string): void => {
+    void window.sessionsApi.readProject(projectId).then((file) => {
+      setOpenProjectId(projectId)
+      setProjectFile(file)
+      setPageId('home')
+    })
+  }, [])
+
+  const startBlankProject = useCallback((): void => {
+    const hostRuntime = {
+      kind: 'host' as const,
+      platform:
+        navigator.platform.toLowerCase().includes('mac')
+          ? ('macos' as const)
+          : navigator.platform.toLowerCase().includes('linux')
+            ? ('linux' as const)
+            : ('windows' as const)
+    }
+    void window.dialogApi
+      .pickDirectory({ runtime: hostRuntime })
+      .then((cwd) => {
+        if (!cwd) return
+        const fallback = cwd.split(/[/\\]/).filter(Boolean).pop() || '未命名项目'
+        const name = window.prompt('项目名称', fallback)?.trim()
+        if (!name) return
+        return window.sessionsApi.createProject(name, cwd)
+      })
+      .then((project) => {
+        if (!project) return
+        refreshProjects()
+        openProject(project.id)
+      })
+  }, [openProject, refreshProjects])
+
   const createProjectFor = useCallback(
     (session: SessionEntry): void => {
       const cwd =
@@ -1328,14 +1362,6 @@ export default function AppShell() {
     },
     [refreshProjects]
   )
-
-  const openProject = useCallback((projectId: string): void => {
-    void window.sessionsApi.readProject(projectId).then((file) => {
-      setOpenProjectId(projectId)
-      setProjectFile(file)
-      setPageId('home')
-    })
-  }, [])
 
   const saveOpenProject = useCallback(
     (projectId: string, file: ProjectFilePayload): void => {
@@ -1473,7 +1499,10 @@ export default function AppShell() {
     if (!pending) return
     const started = sessions.find(
       (session) =>
-        session.terminalId === pending.terminalId && session.adapterSessionId
+        session.adapterSessionId &&
+        (pending.terminalId
+          ? session.terminalId === pending.terminalId
+          : session.terminalId === useTerminalsStore.getState().activeTerminalId)
     )
     if (!started?.adapterSessionId) return
     pendingProjectAssign.current = null
@@ -1581,6 +1610,7 @@ export default function AppShell() {
                 projects={projects}
                 onOpenProject={openProject}
                 onCreateProject={createProjectFor}
+                onNewProject={startBlankProject}
                 onAssignProject={assignProject}
                 onHandoff={beginHandoff}
                 onHandBack={beginHandBack}
@@ -1819,15 +1849,31 @@ export default function AppShell() {
                     className="mt-1 h-40 w-full rounded-lg border border-border-default bg-content p-2 text-[12px] text-text-primary"
                   />
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (openProjectId) saveOpenProject(openProjectId, projectFile)
-                  }}
-                  className="w-fit rounded-lg bg-button-primary px-3 py-1.5 font-pingfang text-[12px] text-button-primary-fg"
-                >
-                  保存
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (openProjectId) saveOpenProject(openProjectId, projectFile)
+                    }}
+                    className="w-fit rounded-lg bg-button-primary px-3 py-1.5 font-pingfang text-[12px] text-button-primary-fg"
+                  >
+                    保存
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="project-new-session"
+                    onClick={() => {
+                      const project = projects.find((item) => item.id === openProjectId)
+                      if (!project) return
+                      pendingProjectAssign.current = { projectId: project.id }
+                      setNewSessionIntent({ kind: 'sheet', workspace: project.cwd })
+                      setNewSessionOpen(true)
+                    }}
+                    className="w-fit rounded-lg border border-border-default px-3 py-1.5 font-pingfang text-[12px] text-text-secondary"
+                  >
+                    {strings.navigation.newSessionInProject}
+                  </button>
+                </div>
               </section>
             )}
             {pageId === 'home' && !projectFile && (
@@ -1925,7 +1971,7 @@ export default function AppShell() {
           newSessionIntent.kind === 'cli' ? newSessionIntent.args : undefined
         }
         initialWorkspace={
-          newSessionIntent.kind === 'cli'
+          newSessionIntent.kind === 'cli' || newSessionIntent.kind === 'sheet'
             ? newSessionIntent.workspace
             : undefined
         }

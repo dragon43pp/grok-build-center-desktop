@@ -53,6 +53,7 @@ export const zhTW = {
     childTerminals: '展開或收合子終端',
     renameSession: '重新命名',
     newProject: '新增專案',
+    newSessionInProject: '在此專案新增工作階段',
     moveToProject: (name: string) => `歸入「${name}」`,
     handoff: '交給其他助手',
     handBack: '交回',

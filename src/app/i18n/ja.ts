@@ -53,6 +53,7 @@ export const ja = {
     childTerminals: '子ターミナルを展開または折りたたむ',
     renameSession: '名前を変更',
     newProject: 'プロジェクトを作成',
+    newSessionInProject: 'このプロジェクトでセッションを作成',
     moveToProject: (name: string) => `「${name}」に入れる`,
     handoff: '別の助手に渡す',
     handBack: '戻す',

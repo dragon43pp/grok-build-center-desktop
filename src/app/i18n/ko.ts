@@ -53,6 +53,7 @@ export const ko = {
     childTerminals: '하위 터미널 펼치기 또는 접기',
     renameSession: '이름 바꾸기',
     newProject: '프로젝트 만들기',
+    newSessionInProject: '이 프로젝트에서 세션 만들기',
     moveToProject: (name: string) => `「${name}」에 넣기`,
     handoff: '다른 도우미에게 넘기기',
     handBack: '돌려주기',

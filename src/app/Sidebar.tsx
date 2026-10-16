@@ -50,6 +50,7 @@ interface SidebarProps {
   projects: readonly ProjectSummary[]
   onOpenProject: (projectId: string) => void
   onCreateProject: (session: SessionEntry) => void
+  onNewProject: () => void
   onAssignProject: (session: SessionEntry, projectId: string) => void
   onHandoff: (session: SessionEntry) => void
   onHandBack: (session: SessionEntry) => void
@@ -105,6 +106,7 @@ export default function Sidebar({
   projects,
   onOpenProject,
   onCreateProject,
+  onNewProject,
   onAssignProject,
   onHandoff,
   onHandBack
@@ -257,6 +259,17 @@ export default function Sidebar({
           />
           <span className="text-[12px] font-medium tracking-wide">
             {strings.navigation.newSession}
+          </span>
+        </button>
+        <button
+          type="button"
+          data-testid="nav-new-project"
+          onClick={onNewProject}
+          className={navButtonClass(false)}
+        >
+          <FolderGit2 className="size-3.5 shrink-0 opacity-80" strokeWidth={1.75} />
+          <span className="text-[12px] font-medium tracking-wide">
+            {strings.navigation.newProject}
           </span>
         </button>
       </nav>

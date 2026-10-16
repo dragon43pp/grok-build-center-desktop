@@ -57,6 +57,7 @@ export const zhCN = {
     childTerminals: '展开或收起子终端',
     renameSession: '重命名',
     newProject: '新建项目',
+    newSessionInProject: '在此项目新建会话',
     moveToProject: (name: string) => `归入「${name}」`,
     handoff: '交给其他助手',
     handBack: '交回',

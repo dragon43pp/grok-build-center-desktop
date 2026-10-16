@@ -113,6 +113,10 @@ export default function NewSessionFlow({
     setWorkspaceHistory(readWorkspaceHistory())
     if (initialTerminalPicker) setTerminalPickerOpen(true)
     if (initialCli) openCli(initialCli)
+    else if (initialWorkspace.trim()) {
+      // 从项目里新建时，把项目目录记进最近目录，选择 CLI 后会预填它。
+      persistWorkspace(initialWorkspace.trim())
+    }
     setNotice(initialNotice)
     // The intent is sampled when the flow opens; draft edits must not reset it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
