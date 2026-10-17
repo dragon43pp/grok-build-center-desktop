@@ -8,6 +8,40 @@
 
 ## [Unreleased]
 
+## [1.0.16] - 2026-10-17
+
+账本加固，历史标题有了第二个来源，长时间不响应的会话会被标成崩溃，Grok 的子会话能认回它的父会话。文件写入前开始留底，但还不能回退。
+
+### 变更
+
+- **账本打开时设三条约束。** 会话账本、任务账本和项目存储共用一个打开入口，开启 WAL、5 秒写入排队和外键约束。外键只对之后新建的表生效，旧表不动。
+- **历史标题多一个来源。** Grok 的 `summary.json` 里有模型生成的标题，以前读出来就丢了。现在它排在用户改名之后、首条消息截断之前。
+- **长时间不响应的会话标成崩溃。** 每条观察事件都算一次心跳。启动时，心跳早于 10 分钟的运行中行降成崩溃并进入重进名单。进程真死的仍由原来的降级覆盖。
+- **Grok 的子会话认回父会话。** 归属来自父目录的 `subagents/*/meta.json`，`summary.json` 的 `parent_session_id` 只作补充。历史页默认仍隐藏子会话，展开后父行标题下显示子会话的类型和状态。
+- **文件写入前留底。** 观察到写入类工具开始执行时，把目标文件的当前内容存成内容寻址的 blob，按工具调用归属。超过 5 MB 只记元信息，符号链接和目录不记。
+
+### 尚未完成
+
+- **还不能回退文件。** 应用不持有模型上下文，只恢复文件、不截断各家 CLI 的会话历史，模型下一轮仍按「文件已改完」继续。回退要等截断历史那一版一起做。
+
+---
+
+### English
+
+The ledger is hardened, history titles have a second source, a session that stops responding is marked crashed, and a Grok subagent session is linked back to its parent. File writes are now snapshotted before they happen, but nothing can be rewound yet.
+
+### Changed
+
+- **The ledger sets three constraints on open.** The session ledger, the task ledger and the project store share one opener, which enables WAL, a 5 second busy timeout and foreign keys. Foreign keys apply only to tables created afterwards; existing tables are untouched.
+- **History titles have a second source.** Grok's `summary.json` carries a model-generated title that the reader used to drop. It now ranks after a user rename and before the truncated first message.
+- **A session that stops responding is marked crashed.** Every observed event counts as a heartbeat. On startup, a running row whose heartbeat is older than 10 minutes is demoted to crashed and added to the re-entry list. A process that is genuinely dead is still covered by the existing demotion.
+- **A Grok subagent session links back to its parent.** Ownership comes from `subagents/*/meta.json` under the parent directory; `parent_session_id` in `summary.json` only fills gaps. The history page still hides subagent sessions by default, and an expanded parent row shows each child's type and status.
+- **File writes are snapshotted first.** When a file-writing tool is observed starting, the target's current content is stored as a content-addressed blob, keyed by the tool call. Files over 5 MB record metadata only, and symbolic links and directories are skipped.
+
+### Not yet
+
+- **Files cannot be rewound yet.** The app does not hold the model context, so restoring a file without truncating each CLI's own history would leave the model continuing as if the edit had landed. Rewind waits for the version that truncates that history.
+
 ## [1.0.15] - 2026-10-17
 
 目标和进展留在本机，不再写进项目仓库；钩子不再为每个事件起一整层 PowerShell；项目能进也能出。
