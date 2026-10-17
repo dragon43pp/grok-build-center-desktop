@@ -887,6 +887,20 @@ function SessionRow({
           <span className="truncate">{baseName(session.cwd) || '—'}</span>
           <span className="truncate">{session.model || '—'}</span>
         </span>
+        {session.spawned && session.spawned.length > 0 && (
+          <span className="mt-0.5 flex items-center gap-1 truncate font-maple text-[10px] text-text-faint">
+            {session.spawned.map((child) => (
+              <span
+                key={child.id}
+                title={child.status}
+                className="shrink-0 rounded bg-surface-strong px-1 text-[9px] text-text-muted"
+              >
+                {child.type || child.id.slice(0, 8)}
+                {child.status ? ` · ${child.status}` : ''}
+              </span>
+            ))}
+          </span>
+        )}
         {brief?.summary && (
           <span className="mt-0.5 block truncate text-[10px] text-text-muted" title={brief.summary}>
             {t.messageSummary}: {brief.summary}

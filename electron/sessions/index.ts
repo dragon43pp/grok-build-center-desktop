@@ -227,8 +227,10 @@ export async function discoverSessions(options: DiscoverOptions = {}): Promise<D
 
   const sessions = sortSessions(results.flatMap((result) => result.sessions)).map(
     (session) => {
+      // 用户改名优先，其次是模型生成的标题，最后才是 reader 的首条消息截断。
       const renamed = options.names?.lookupName(session.agent, session.id)
-      return renamed ? { ...session, title: renamed } : session
+      const title = renamed || session.generatedTitle || session.title
+      return title === session.title ? session : { ...session, title }
     }
   )
   return {

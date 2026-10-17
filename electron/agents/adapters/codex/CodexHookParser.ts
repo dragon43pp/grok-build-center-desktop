@@ -1,5 +1,5 @@
 import type { CodexNativeFact } from './types'
-import { summarizeCodexTool } from './codexSummaries'
+import { codexWritePath, summarizeCodexTool } from './codexSummaries'
 
 const MAX_ID_LENGTH = 256
 
@@ -85,6 +85,11 @@ export function parseCodexHook(value: unknown): CodexNativeFact | null {
     if (!toolUseId) return null
     const toolInput = recordOf(raw.tool_input) ?? {}
     const summary = summarizeCodexTool(raw.tool_name, toolInput)
+    const filePath = codexWritePath(
+      raw.tool_name,
+      toolInput,
+      bounded(raw.cwd, 4_096)
+    )
     return {
       type: nativeType === 'PreToolUse' ? 'tool-started' : 'tool-completed',
       nativeSessionId,
@@ -92,7 +97,8 @@ export function parseCodexHook(value: unknown): CodexNativeFact | null {
       nativeType,
       toolUseId,
       toolName: summary.toolName,
-      summary: summary.summary
+      summary: summary.summary,
+      ...(filePath ? { filePath } : {})
     }
   }
   if (nativeType === 'PermissionRequest') {

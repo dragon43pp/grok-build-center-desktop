@@ -28,6 +28,8 @@ export type ClaudeNativeFact =
       toolName: string
       summary?: string
       fingerprint: string
+      /** 写入类工具的目标绝对路径；只读工具不填。供检查点记录层在写入前抓原内容。 */
+      filePath?: string
     })
   | (ClaudeFactBase & {
       type: 'permission-requested'

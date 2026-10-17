@@ -1,21 +1,19 @@
 /**
  * ASC 会话账本落盘。只写 userData，不碰各家 CLI 的会话库。
  */
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import type {
   LedgerStatus,
   SessionLedgerRow,
   SessionLedgerUpsert
 } from '../../shared/session-ledger'
+import { openLedger } from './sqlite'
 
 export class SessionLedger {
   private readonly db: DatabaseSync
 
   constructor(userDataDir: string) {
-    mkdirSync(userDataDir, { recursive: true })
-    this.db = new DatabaseSync(join(userDataDir, 'session-ledger.sqlite'))
+    this.db = openLedger(userDataDir)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -42,6 +40,9 @@ export class SessionLedger {
     }
     if (!columns.some((column) => column.name === 'terminal_id')) {
       this.db.exec('ALTER TABLE sessions ADD COLUMN terminal_id TEXT')
+    }
+    if (!columns.some((column) => column.name === 'heartbeat_at')) {
+      this.db.exec('ALTER TABLE sessions ADD COLUMN heartbeat_at INTEGER')
     }
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS session_names (
@@ -185,6 +186,35 @@ export class SessionLedger {
          WHERE id = ? AND status = 'running'`
       )
       .run(status, resumeOnLaunch ? 1 : 0, now, now, id)
+  }
+
+  /**
+   * 收到该会话的观察事件时记一笔。启动对账靠它区分「进程还活着」和「进程在但不响应」。
+   */
+  touchHeartbeat(id: string, now = Date.now()): void {
+    this.db
+      .prepare(
+        `UPDATE sessions SET heartbeat_at = ?
+         WHERE id = ? AND status = 'running'`
+      )
+      .run(now, id)
+  }
+
+  /**
+   * 账本写着 running，但心跳早于阈值：进程还挂着，却已经没有事件进来。
+   * 和 `demoteStaleRunning` 一样降成 crashed 并打重进标记，下次启动按崩溃恢复。
+   */
+  demoteUnresponsive(olderThanMs: number, now = Date.now()): number {
+    const result = this.db
+      .prepare(
+        `UPDATE sessions
+         SET status = 'crashed', resume_on_launch = 1, updated_at = ?, stopped_at = ?
+         WHERE status = 'running'
+           AND heartbeat_at IS NOT NULL
+           AND heartbeat_at < ?`
+      )
+      .run(now, now, now - olderThanMs)
+    return Number(result.changes ?? 0)
   }
 
   /** 进程没了但账本还写着 running：下次启动按崩溃恢复。 */

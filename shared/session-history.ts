@@ -120,11 +120,29 @@ export type CostSource =
   /** No usage at all (Antigravity records none). */
   | 'none'
 
+/** 一场会话派出的一个子智能体。只记归属和状态，不记它的上下文。 */
+export interface SpawnedSubagent {
+  /** 子会话 id。 */
+  id: string
+  /** 子智能体类型名，如 `deva-explore`。空串表示记录里没写。 */
+  type: string
+  /** 记录里的状态，如 `completed`。空串表示没写。 */
+  status: string
+  /** 耗时毫秒，0 表示记录里没有。 */
+  durationMs: number
+}
+
 export interface HistorySession {
   agent: AgentId
   /** Agent-native session id (UUID, `ses_…`, …). */
   id: string
   title: string
+  /**
+   * 模型生成的标题，和 `title` 分开记。`title` 是首条消息截断或 CLI 自己的摘要，
+   * 展示时的优先级是：用户改名 > `generatedTitle` > `title`。
+   * 目前只有 Grok reader 填它（`summary.json` 的 `generated_title`）。
+   */
+  generatedTitle?: string
   /** Project working directory, '' when the agent does not record one. */
   cwd: string
   /** ISO 8601, or null when unknown. */
@@ -153,6 +171,13 @@ export interface HistorySession {
    * these are real API calls that cost real money.
    */
   subagent: boolean
+  /**
+   * 派出这场会话的父会话 id。只有子会话有。
+   * 目前只有 Grok reader 填它，来源是父目录的 `subagents/<id>/meta.json`。
+   */
+  parentId?: string
+  /** 这场会话派出的子智能体。父会话才有，子会话本身不递归。 */
+  spawned?: SpawnedSubagent[]
   /**
    * Which of an agent's several stores the session came from, when it has more
    * than one. Antigravity is the only such agent today: its CLI keeps history

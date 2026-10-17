@@ -47,7 +47,7 @@
  * out of `output` so that our five components do not count it twice.
  */
 import { join } from 'node:path'
-import type { AgentId, HistorySession, TokenUsage } from '../types'
+import type { AgentId, HistorySession, SpawnedSubagent, TokenUsage } from '../types'
 import { withTotal } from '../types'
 import {
   countLines,
@@ -68,12 +68,25 @@ const COST_TICKS_PER_USD = 1e9
 interface GrokSummary {
   info?: { id?: string; cwd?: string }
   session_summary?: string
+  /** 模型生成的短标题。有就用它，没有才回退到摘要或首条消息。 */
+  generated_title?: string
   created_at?: string
   updated_at?: string
   num_messages?: number
   num_chat_messages?: number
   current_model_id?: string
   agent_name?: string
+  /** 少数场次在摘要里记父会话。归属以 `subagents/meta.json` 为准，这里只作补充。 */
+  parent_session_id?: string
+}
+
+/** 父会话目录 `subagents/<id>/meta.json`。子会话本身在普通 sessions 树里。 */
+interface GrokSubagentMeta {
+  parent_session_id?: string
+  child_session_id?: string
+  subagent_type?: string
+  status?: string
+  duration_ms?: number
 }
 
 interface GrokUsageBlock {
@@ -148,9 +161,47 @@ function titleFromUpdates(lines: readonly string[]): string {
   return ''
 }
 
+/**
+ * 归属表。`summary.json` 几乎不写 `parent_session_id`（本机 66 场只有 2 场），
+ * 真正的记录在父会话目录的 `subagents/<id>/meta.json`。
+ */
+async function readSpawnIndex(
+  sessionsRoot: string
+): Promise<Map<string, { parentId: string; spawned: SpawnedSubagent }>> {
+  const index = new Map<string, { parentId: string; spawned: SpawnedSubagent }>()
+  for (const group of await listSubdirs(sessionsRoot)) {
+    for (const parentId of await listSubdirs(join(sessionsRoot, group))) {
+      for (const childId of await listSubdirs(join(sessionsRoot, group, parentId, 'subagents'))) {
+        const meta = await readJson<GrokSubagentMeta>(
+          join(sessionsRoot, group, parentId, 'subagents', childId, 'meta.json')
+        )
+        const id = firstText(meta?.child_session_id, childId)
+        if (!id) continue
+        index.set(id, {
+          parentId: firstText(meta?.parent_session_id, parentId),
+          spawned: {
+            id,
+            type: firstText(meta?.subagent_type),
+            status: firstText(meta?.status),
+            durationMs: num(meta?.duration_ms)
+          }
+        })
+      }
+    }
+  }
+  return index
+}
+
 export async function readGrokSessions(rootOverride?: string | null): Promise<HistorySession[]> {
   const sessionsRoot = join(rootOverride || grokHome(), 'sessions')
   const sessions: HistorySession[] = []
+  const spawnIndex = await readSpawnIndex(sessionsRoot)
+  const spawnedByParent = new Map<string, SpawnedSubagent[]>()
+  for (const entry of spawnIndex.values()) {
+    const list = spawnedByParent.get(entry.parentId) ?? []
+    list.push(entry.spawned)
+    spawnedByParent.set(entry.parentId, list)
+  }
 
   for (const group of await listSubdirs(sessionsRoot)) {
     for (const id of await listSubdirs(join(sessionsRoot, group))) {
@@ -190,6 +241,7 @@ export async function readGrokSessions(rootOverride?: string | null): Promise<Hi
         agent: 'grok' as AgentId,
         id,
         title: title || firstText(summary?.agent_name, '(untitled)'),
+        generatedTitle: toTitle(summary?.generated_title) || undefined,
         cwd: firstText(summary?.info?.cwd),
         createdAt: isoFromString(summary?.created_at),
         updatedAt: isoFromString(summary?.updated_at) ?? isoFromString(usageFile?.updatedAt),
@@ -201,7 +253,9 @@ export async function readGrokSessions(rootOverride?: string | null): Promise<Hi
         storage: 'dir',
         path: dir,
         archived: false,
-        subagent: false
+        subagent: spawnIndex.has(id) || Boolean(summary?.parent_session_id),
+        parentId: spawnIndex.get(id)?.parentId || firstText(summary?.parent_session_id) || undefined,
+        spawned: spawnedByParent.get(id)
       })
     }
   }

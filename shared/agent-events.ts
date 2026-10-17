@@ -55,6 +55,8 @@ export interface ToolStartedPayload {
   turnId: string
   name: string
   category?: 'read' | 'edit' | 'shell' | 'search' | 'network' | 'mcp' | 'other'
+  /** 写入类工具的目标绝对路径。只读工具不带。供检查点记录层在写入前抓原内容。 */
+  filePath?: string
 }
 
 export interface ToolProgressPayload {

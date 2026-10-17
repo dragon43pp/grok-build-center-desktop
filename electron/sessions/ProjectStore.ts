@@ -13,6 +13,7 @@ import {
 } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { openLedger } from './sqlite'
 import {
   AGENTS_DOC_MAX_BYTES,
   AGENTS_FILE_NAME,
@@ -44,7 +45,7 @@ export class ProjectStore {
 
   constructor(private readonly userDataDir: string) {
     mkdirSync(join(userDataDir, 'project-notes'), { recursive: true })
-    this.db = new DatabaseSync(join(userDataDir, 'session-ledger.sqlite'))
+    this.db = openLedger(userDataDir)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (
         id TEXT PRIMARY KEY,

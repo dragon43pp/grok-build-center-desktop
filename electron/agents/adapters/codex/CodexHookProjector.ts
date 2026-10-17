@@ -208,7 +208,8 @@ export class CodexHookProjector {
               callId: fact.toolUseId,
               turnId,
               name: fact.toolName,
-              category: toolCategory(fact.toolName)
+              category: toolCategory(fact.toolName),
+              ...(fact.filePath ? { filePath: fact.filePath } : {})
             }
           },
           `${fact.nativeSessionId}:${turnId}:tool:${fact.toolUseId}:started`,

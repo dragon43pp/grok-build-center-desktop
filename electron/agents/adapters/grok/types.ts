@@ -36,6 +36,8 @@ export type GrokNativeFact =
       type: 'tool-started' | 'tool-completed' | 'tool-failed'
       toolCallId: string
       toolName: string
+      /** 写入类工具的目标绝对路径；只读工具不填。供检查点记录层在写入前抓原内容。 */
+      filePath?: string
     })
   | (GrokFactBase & {
       type: 'permission-requested'

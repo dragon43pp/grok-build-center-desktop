@@ -42,6 +42,7 @@ import { registerFloatingRendererScheme } from './floating/FloatingRendererProto
 import { AiCliDiscoveryService } from './ai-cli-discovery'
 import { AgentSessionRuntime } from './agents/AgentSessionRuntime'
 import { SessionLedger } from './sessions/SessionLedger'
+import { CheckpointStore } from './sessions/checkpoints'
 import { defaultSkillRoots, installAgentSkills } from './agents/installAgentSkill'
 import { TaskLedger } from './sessions/TaskLedger'
 import { ProjectStore } from './sessions/ProjectStore'
@@ -243,6 +244,7 @@ const agentRuntime = new AgentSessionRuntime({
   registry: observerRegistry,
   workspace: workspaceReader,
   ledger: sessionLedger,
+  checkpoints: new CheckpointStore(join(app.getPath('userData'), 'checkpoints')),
   tasks: taskLedger,
   options: {
     runDirRoot: join(app.getPath('userData'), 'observer-runs'),
@@ -253,6 +255,8 @@ void agentRuntime.adoptLiveSessions().then(() => {
   // 安装更新会先停进程。账本可能还写着 running，重进标记却是 0。
   // 活着的宿主行已经接回，剩下没挂上的行补进重进名单。
   agentRuntime.repairInterruptedLedger()
+  // 进程还在、但心跳早于阈值的行也降成 crashed。进程真死的由上面那条覆盖。
+  sessionLedger?.demoteUnresponsive(AgentSessionRuntime.UNRESPONSIVE_AFTER_MS)
 }).catch((error) => {
   console.error('[asc] live session adopt failed:', error)
   sessionLedger?.demoteStaleRunning()

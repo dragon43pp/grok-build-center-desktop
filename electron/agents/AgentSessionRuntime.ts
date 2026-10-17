@@ -36,6 +36,7 @@ import type {
 import type { BridgeAgent } from '../../shared/bridge-protocol'
 import { extractAgentSessionKey } from '../../shared/session-ledger'
 import type { SessionLedger } from '../sessions/SessionLedger'
+import type { CheckpointStore } from '../sessions/checkpoints'
 import type { TaskLedger } from '../sessions/TaskLedger'
 import { AgentEventQueue, type AgentQueueLimits } from './AgentEventQueue'
 import { normalizeAdapterEvent } from './AgentEventNormalizer'
@@ -435,6 +436,7 @@ export class AgentSessionRuntime {
       registry: ObserverRegistry
       workspace?: AgentWorkspaceHost
       ledger?: SessionLedger
+      checkpoints?: CheckpointStore
       tasks?: TaskLedger
       options: AgentRuntimeOptions
     }
@@ -1158,6 +1160,12 @@ export class AgentSessionRuntime {
     return adopted
   }
 
+  /**
+   * 进程还挂着、但超过这个时长没有任何观察事件，就当无响应。
+   * 进程真死的情形由 `demoteStaleRunning` 覆盖，不靠这个阈值。
+   */
+  static readonly UNRESPONSIVE_AFTER_MS = 10 * 60 * 1000
+
   /** 启动时把上次没写完的 running 降成 crashed，供重进名单使用。 */
   demoteStaleLedger(): number {
     return this.deps.ledger?.demoteStaleRunning() ?? 0
@@ -1257,6 +1265,9 @@ export class AgentSessionRuntime {
       session.rejectedEventCount++
       return
     }
+    // 每条观察事件都算一次心跳。进程在但不响应的判定靠它，不另起定时器。
+    this.deps.ledger?.touchHeartbeat(session.sessionId)
+    this.captureCheckpoint(session, normalized)
     const capturedKey = normalized.agentSessionKey?.trim()
     if (capturedKey) {
       this.deps.ledger?.captureKey(session.sessionId, capturedKey)
@@ -1300,6 +1311,26 @@ export class AgentSessionRuntime {
       return
     }
     this.scheduleFlush(session)
+  }
+
+  /**
+   * 写入类工具开始执行时，把目标文件的当前内容存进检查点。
+   * 只在 tool.started 上记：等 tool.completed 就晚了，文件已经被改掉。
+   * 记录失败不影响事件流——检查点是旁路，不能拖垮会话。
+   */
+  private captureCheckpoint(
+    session: ActiveAgentSession,
+    event: { kind: string; payload: unknown }
+  ): void {
+    const store = this.deps.checkpoints
+    if (!store || event.kind !== 'tool.started') return
+    const payload = event.payload as { callId?: unknown; filePath?: unknown }
+    if (typeof payload.callId !== 'string' || typeof payload.filePath !== 'string') return
+    try {
+      store.capture(session.sessionId, payload.callId, payload.filePath)
+    } catch (error) {
+      console.error('[agent-runtime] checkpoint capture failed:', error)
+    }
   }
 
   private scheduleFlush(session: ActiveAgentSession): void {

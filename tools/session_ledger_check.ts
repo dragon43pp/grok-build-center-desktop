@@ -1,11 +1,13 @@
 /**
  * 会话账本与启动钥匙提取的纯检查。不碰用户的 CLI 目录。
  */
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { extractAgentSessionKey } from '../shared/session-ledger'
 import { SessionLedger } from '../electron/sessions/SessionLedger'
+import { CheckpointStore, MAX_BLOB_BYTES } from '../electron/sessions/checkpoints'
 import { parseProjectFile, renderProjectFile, appendProgress } from '../shared/project-file'
 import { ProjectStore } from '../electron/sessions/ProjectStore'
 
@@ -39,6 +41,15 @@ check(
 const dir = mkdtempSync(join(tmpdir(), 'asc-ledger-'))
 try {
   const ledger = new SessionLedger(dir)
+  const pragma = (name: string): unknown => {
+    const row = (
+      ledger as unknown as { db: { prepare(sql: string): { get(): Record<string, unknown> } } }
+    ).db.prepare(`PRAGMA ${name}`).get()
+    return Object.values(row)[0]
+  }
+  check('账本使用 WAL', pragma('journal_mode') === 'wal')
+  check('并发写入排队 5 秒', Number(pragma('busy_timeout')) === 5000)
+  check('外键约束开启', Number(pragma('foreign_keys')) === 1)
   ledger.upsertRunning({
     id: 'asc-1',
     agentId: 'claude',
@@ -132,6 +143,33 @@ try {
     hostPtyId: 'pty-live'
   })
   check('崩溃前还在跑的行会被降级', ledger.demoteStaleRunning() === 1)
+  ledger.upsertRunning({
+    id: 'asc-7',
+    agentId: 'grok',
+    installationId: 'grok-local',
+    name: '心跳停了',
+    cwd: 'D:\\work',
+    args: [],
+    cols: 80,
+    rows: 24,
+    agentSessionKey: '01a-stale'
+  })
+  ledger.touchHeartbeat('asc-7', Date.now() - 11 * 60 * 1000)
+  check('心跳早于阈值的行降成崩溃', ledger.demoteUnresponsive(10 * 60 * 1000) === 1)
+  check('无响应的行进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-7'))
+  ledger.upsertRunning({
+    id: 'asc-8',
+    agentId: 'grok',
+    installationId: 'grok-local',
+    name: '心跳正常',
+    cwd: 'D:\\work',
+    args: [],
+    cols: 80,
+    rows: 24
+  })
+  ledger.touchHeartbeat('asc-8')
+  check('心跳新鲜的行不被降级', ledger.demoteUnresponsive(10 * 60 * 1000) === 0)
+  check('心跳新鲜的行还在跑', ledger.get('asc-8')?.status === 'running')
   check('有钥匙的降级行进入重进名单', ledger.listResumeOnLaunch().some((row) => row.id === 'asc-2'))
   check('主动停止的行不被降级成崩溃', ledger.get('asc-1')?.status === 'stopped')
   ledger.renameSession('asc-3', '改过的名字')
@@ -155,6 +193,53 @@ try {
   }
 } finally {
   rmSync(dir, { recursive: true, force: true })
+}
+
+const checkpointRoot = mkdtempSync(join(tmpdir(), 'asc-checkpoints-'))
+const checkpointFiles = mkdtempSync(join(tmpdir(), 'asc-checkpoint-files-'))
+try {
+  const store = new CheckpointStore(checkpointRoot)
+  const target = join(checkpointFiles, 'note.txt')
+  writeFileSync(target, '原始内容', 'utf8')
+
+  const first = store.capture('ses_1', 'tool-1', target)
+  check('写入前抓到原内容', first?.pre === createHash('sha256').update('原始内容').digest('hex'))
+  check('blob 按 hash 落盘', first !== null && existsSync(join(checkpointRoot, 'ses_1', first.pre ?? '')))
+
+  writeFileSync(target, '改过一次', 'utf8')
+  const second = store.capture('ses_1', 'tool-2', target)
+  check('同一文件两次写入序号递增', (first?.seq ?? 0) + 1 === second?.seq)
+  check('第二次记的是改过的内容', second?.pre !== first?.pre)
+
+  const replay = store.capture('ses_1', 'tool-1', target)
+  check('同一 toolUseId 重投不重复记', replay === null)
+
+  check('相对路径拒绝', store.capture('ses_1', 'tool-3', 'note.txt') === null)
+  check('会话 id 白名单化后为空则拒绝', store.capture('../..', 'tool-4', target) === null)
+
+  const fresh = join(checkpointFiles, 'missing.txt')
+  const created = store.capture('ses_1', 'tool-5', fresh)
+  check('原本不存在记为 null', created?.pre === null && created?.tooLarge !== true)
+
+  const huge = join(checkpointFiles, 'huge.bin')
+  writeFileSync(huge, Buffer.alloc(MAX_BLOB_BYTES + 1))
+  const skipped = store.capture('ses_1', 'tool-6', huge)
+  check('超过 5MB 不存 blob', skipped?.tooLarge === true && skipped.pre === null)
+  check('超限文件没有落 blob', !existsSync(join(checkpointRoot, 'ses_1', 'huge.bin')))
+
+  const linked = join(checkpointFiles, 'linked.txt')
+  try {
+    symlinkSync(target, linked)
+    check('符号链接不备份', store.capture('ses_1', 'tool-7', linked) === null)
+  } catch {
+    console.log('ok  符号链接不备份（本机建不了链接，跳过）')
+  }
+
+  mkdirSync(join(checkpointFiles, 'adir'))
+  check('目录不是写入目标', store.capture('ses_1', 'tool-8', join(checkpointFiles, 'adir')) === null)
+} finally {
+  rmSync(checkpointRoot, { recursive: true, force: true })
+  rmSync(checkpointFiles, { recursive: true, force: true })
 }
 
 const project = parseProjectFile(renderProjectFile({ goal: '把前端做完', progress: '', rest: '' }))

@@ -1,4 +1,4 @@
-import { basename, relative, resolve } from 'node:path'
+import { basename, isAbsolute, relative, resolve } from 'node:path'
 
 const MAX_SUMMARY_LENGTH = 48
 const ANSI_ESCAPE = /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g
@@ -58,6 +58,42 @@ function safeDomain(value: unknown): string | undefined {
 
 export function sanitizeClaudeLabel(value: unknown): string | undefined {
   return clean(value)
+}
+
+/**
+ * 写入类工具的目标绝对路径。只服务检查点记录层：相对路径按 cwd 补全，
+ * 补不出绝对路径就返回 undefined（记录层拒绝，不猜）。展示用的截断相对路径走 safePath。
+ */
+export function claudeWritePath(
+  toolNameValue: unknown,
+  toolInputValue: unknown,
+  cwd?: string
+): string | undefined {
+  const toolName = clean(toolNameValue)?.toLowerCase()
+  if (!toolName || !['write', 'edit', 'multiedit', 'notebookedit'].includes(toolName)) {
+    return undefined
+  }
+  const input = recordOf(toolInputValue)
+  const raw = cleanFull(input?.file_path ?? input?.path ?? input?.notebook_path)
+  if (!raw) return undefined
+  return absolutePath(raw, cwd)
+}
+
+/** 路径字段不截断：48 字符的展示上限会把真实路径切坏。 */
+function cleanFull(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const sanitized = value.replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  return sanitized || undefined
+}
+
+function absolutePath(raw: string, cwd?: string): string | undefined {
+  try {
+    if (isAbsolute(raw)) return resolve(raw)
+    if (!cwd) return undefined
+    return resolve(resolve(cwd), raw)
+  } catch {
+    return undefined
+  }
 }
 
 export function summarizeClaudeTool(

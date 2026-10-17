@@ -8,6 +8,7 @@
  * - event payload 绝不能被拼接后执行成命令、路径或参数。
  */
 
+import { isAbsolute } from 'node:path'
 import type {
   AgentEventKind,
   AgentEventPayload,
@@ -92,6 +93,12 @@ function boundedText(
 function requiredId(value: unknown): string | null {
   const text = boundedText(value, MAX_ID_LENGTH)
   return text ? text : null
+}
+
+/** 只放行绝对路径：相对路径无法定位文件，记录层会拒绝，这里提前丢掉。 */
+function absolutePath(value: unknown): string | undefined {
+  const text = boundedText(value, MAX_CWD_LENGTH)
+  return text && isAbsolute(text) ? text : undefined
 }
 
 function optionalId(value: unknown): string | undefined {
@@ -279,7 +286,14 @@ export function normalizeAdapterEvent(value: unknown): AdapterEvent | null {
         payload.category,
         TOOL_CATEGORIES
       ) as ToolStartedPayload['category'] | undefined
-      normalizedPayload = { callId, turnId, name, category } as AgentEventPayload
+      const filePath = absolutePath(payload.filePath)
+      normalizedPayload = {
+        callId,
+        turnId,
+        name,
+        category,
+        ...(filePath ? { filePath } : {})
+      } as AgentEventPayload
       break
     }
     case 'tool.progress': {

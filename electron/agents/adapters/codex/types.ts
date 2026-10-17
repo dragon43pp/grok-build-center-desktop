@@ -39,6 +39,8 @@ export type CodexNativeFact =
       toolUseId: string
       toolName: string
       summary?: string
+      /** 写入类工具的目标绝对路径；只读工具不填。供检查点记录层在写入前抓原内容。 */
+      filePath?: string
     })
   | (CodexFactBase & {
       type: 'permission-requested'

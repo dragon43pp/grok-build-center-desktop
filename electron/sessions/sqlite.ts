@@ -41,6 +41,23 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync, type DatabaseSyncOptions } from 'node:sqlite'
 
+/**
+ * ASC 自己的账本（`session-ledger.sqlite`）。三个 Store 共用这一份打开方式，
+ * 免得各写各的 pragma。
+ *
+ * WAL 让扫描读和账本写不再互相堵住；`busy_timeout` 给并发写入留 5 秒排队，
+ * 而不是立刻抛 SQLITE_BUSY。`foreign_keys` 只对本次连接之后新建的表生效，
+ * 不回改旧表，所以不会让存量数据突然违反约束。
+ */
+export function openLedger(userDataDir: string): DatabaseSync {
+  mkdirSync(userDataDir, { recursive: true })
+  const db = new DatabaseSync(join(userDataDir, 'session-ledger.sqlite'))
+  db.exec('PRAGMA journal_mode = WAL')
+  db.exec('PRAGMA busy_timeout = 5000')
+  db.exec('PRAGMA foreign_keys = ON')
+  return db
+}
+
 /** Absent, unreadable, or zero-byte `-wal`: the main file is self-contained. */
 function walIsEmpty(path: string): boolean {
   try {

@@ -2,9 +2,8 @@
  * 任务与问题编号落盘。和会话账本同库，避免两份 userData 各写各的。
  */
 import { randomUUID } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { openLedger } from './sqlite'
 import type {
   AnswerTaskQuestionResult,
   OpenTaskQuestionInput,
@@ -16,8 +15,7 @@ export class TaskLedger {
   private readonly db: DatabaseSync
 
   constructor(userDataDir: string) {
-    mkdirSync(userDataDir, { recursive: true })
-    this.db = new DatabaseSync(join(userDataDir, 'session-ledger.sqlite'))
+    this.db = openLedger(userDataDir)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,

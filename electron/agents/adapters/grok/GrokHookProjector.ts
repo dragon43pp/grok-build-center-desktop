@@ -253,6 +253,7 @@ export class GrokHookProjector {
     nativeType: string
     toolCallId: string
     toolName: string
+    filePath?: string
   }): AdapterEvent[] {
     const key = toolKey(fact.nativeSessionId, fact.toolCallId)
     if (this.tools.has(key)) return []
@@ -277,7 +278,8 @@ export class GrokHookProjector {
             callId: fact.toolCallId,
             turnId,
             name: fact.toolName,
-            category: toolCategory(fact.toolName)
+            category: toolCategory(fact.toolName),
+            ...(fact.filePath ? { filePath: fact.filePath } : {})
           }
         },
         `${fact.nativeSessionId}:${turnId}:tool:${fact.toolCallId}:started`,

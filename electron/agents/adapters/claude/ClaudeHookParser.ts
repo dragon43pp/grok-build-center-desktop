@@ -4,7 +4,7 @@ import {
   type ClaudeHookEventName,
   type ClaudeNativeFact
 } from './types'
-import { sanitizeClaudeLabel, summarizeClaudeTool } from './claudeSummaries'
+import { claudeWritePath, sanitizeClaudeLabel, summarizeClaudeTool } from './claudeSummaries'
 
 const MAX_ID_LENGTH = 256
 const MAX_REASON_LENGTH = 128
@@ -67,13 +67,16 @@ export function parseClaudeHook(value: unknown): ClaudeNativeFact | null {
       const toolUseId = bounded(raw.tool_use_id, MAX_ID_LENGTH)
       if (!toolUseId) return null
       const toolInput = recordOf(raw.tool_input) ?? {}
-      const summary = summarizeClaudeTool(raw.tool_name, toolInput, bounded(raw.cwd, 4_096))
+      const cwd = bounded(raw.cwd, 4_096)
+      const summary = summarizeClaudeTool(raw.tool_name, toolInput, cwd)
+      const filePath = claudeWritePath(raw.tool_name, toolInput, cwd)
       const common = {
         ...base,
         toolUseId,
         toolName: summary.toolName,
         summary: summary.summary,
-        fingerprint: fingerprint(toolInput)
+        fingerprint: fingerprint(toolInput),
+        ...(filePath ? { filePath } : {})
       }
       if (nativeType === 'PreToolUse') return { ...common, type: 'tool-started' }
       if (nativeType === 'PostToolUse') {

@@ -1,4 +1,7 @@
+import { isAbsolute, resolve } from 'node:path'
 import type { GrokHookEventName, GrokNativeFact } from './types'
+
+const WRITE_TOOLS = ['write_file', 'edit_file', 'write', 'edit', 'search_replace']
 
 const MAX_ID_LENGTH = 256
 
@@ -50,6 +53,30 @@ function bounded(value: unknown, max: number): string | undefined {
     !/[\u0000-\u001f\u007f]/.test(trimmed)
     ? trimmed
     : undefined
+}
+
+/**
+ * 写入类工具的目标绝对路径。只服务检查点记录层：相对路径按 cwd 补全，
+ * 补不出绝对路径就返回 undefined（记录层拒绝，不猜）。
+ */
+function grokWritePath(
+  toolName: string,
+  raw: Record<string, unknown>
+): string | undefined {
+  if (!WRITE_TOOLS.includes(toolName.toLowerCase())) return undefined
+  const input = recordOf(raw.toolInput) ?? recordOf(raw.tool_input)
+  const value = input?.file_path ?? input?.path ?? input?.filePath
+  if (typeof value !== 'string') return undefined
+  const target = value.replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  if (!target) return undefined
+  const cwd = firstBounded(raw, ['cwd', 'workspaceRoot', 'workspace_root'], 4_096)
+  try {
+    if (isAbsolute(target)) return resolve(target)
+    if (!cwd) return undefined
+    return resolve(resolve(cwd), target)
+  } catch {
+    return undefined
+  }
 }
 
 function firstBounded(
@@ -150,6 +177,7 @@ export function parseGrokHook(value: unknown): GrokNativeFact | null {
     const toolCallId = firstId(raw, ['toolUseId', 'tool_use_id', 'tool_call_id'])
     const toolName = firstBounded(raw, ['toolName', 'tool_name'], 128)
     if (!toolCallId || !toolName) return null
+    const filePath = grokWritePath(toolName, raw)
     return {
       ...base,
       type:
@@ -159,7 +187,8 @@ export function parseGrokHook(value: unknown): GrokNativeFact | null {
             ? 'tool-completed'
             : 'tool-failed',
       toolCallId,
-      toolName
+      toolName,
+      ...(filePath ? { filePath } : {})
     }
   }
   if (nativeType === 'Notification') {

@@ -252,7 +252,8 @@ export class ClaudeHookProjector {
           callId: tool.id,
           turnId: tool.turnId,
           name: tool.name,
-          category: toolCategory(tool.name)
+          category: toolCategory(tool.name),
+          ...(fact.filePath ? { filePath: fact.filePath } : {})
         }
       },
       `${key}:started`,
