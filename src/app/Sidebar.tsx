@@ -26,7 +26,7 @@ import {
 } from './pages'
 import { statusDot, statusLabel } from './sessionStatus'
 import { useStrings, type AppStrings } from './i18n'
-import type { ProjectSummary } from '../../shared/ipc-contract'
+import { projectOwnsSession, type ProjectSummary } from '../../shared/ipc-contract'
 import type { SessionEntry } from '../state/sessionsStore'
 import type { TerminalEntry } from '../state/terminalsStore'
 import { useSidebarSessionDrag } from '../session-navigation/useSidebarSessionDrag'
@@ -115,13 +115,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [projectQuery, setProjectQuery] = useState('')
   const projectIdOf = (session: SessionEntry): string | null =>
-    projects.find((project) =>
-      project.members.some(
-        (member) =>
-          member.agentId === session.adapterId &&
-          member.agentSessionKey === session.adapterSessionId
-      )
-    )?.id ?? null
+    projects.find((project) => projectOwnsSession(project, session))?.id ?? null
   const strings = useStrings()
   const query = projectQuery.trim().toLowerCase()
   const visibleSessions = sessions.filter((session) => {
@@ -129,11 +123,7 @@ export default function Sidebar({
     if (session.name.toLowerCase().includes(query)) return true
     return projects.some(
       (project) =>
-        project.members.some(
-          (member) =>
-            member.agentId === session.adapterId &&
-            member.agentSessionKey === session.adapterSessionId
-        ) &&
+        projectOwnsSession(project, session) &&
         (project.name.toLowerCase().includes(query) ||
           project.goal.toLowerCase().includes(query))
     )
@@ -334,7 +324,6 @@ export default function Sidebar({
             return (
               <li
                 key={session.sessionId}
-                hidden={collapsed}
                 className="contents"
               >
               {showProject && project && (
@@ -765,13 +754,7 @@ export default function Sidebar({
                   {strings.navigation.moveToProject(project.name)}
                 </button>
               ))}
-              {projects.some((project) =>
-                project.members.some(
-                  (member) =>
-                    member.agentId === menuSession.adapterId &&
-                    member.agentSessionKey === menuSession.adapterSessionId
-                )
-              ) && (
+              {projects.some((project) => projectOwnsSession(project, menuSession)) && (
                 <button
                   type="button"
                   role="menuitem"
@@ -785,13 +768,7 @@ export default function Sidebar({
                   {strings.navigation.removeFromProject}
                 </button>
               )}
-              {projects.some((project) =>
-                project.members.some(
-                  (member) =>
-                    member.agentId === menuSession.adapterId &&
-                    member.agentSessionKey === menuSession.adapterSessionId
-                )
-              ) && (
+              {projects.some((project) => projectOwnsSession(project, menuSession)) && (
                 <button
                   type="button"
                   role="menuitem"

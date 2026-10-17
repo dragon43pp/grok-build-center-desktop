@@ -351,6 +351,38 @@ export interface ProjectSummary {
   members: Array<{ agentId: string; agentSessionKey: string }>
 }
 
+/**
+ * 一个会话是不是这个项目的成员。
+ *
+ * 成员关系存的 agentId 来源不统一：从历史挂进去的是 CLI definition id
+ * （claude），从侧栏挂进去的是 adapter id（claude-code）。两个 id 大多数
+ * CLI 相同，Claude 和 Cursor 不同。按钥匙比对，再容忍这两种写法，否则
+ * 这两个 CLI 的会话挂进项目后侧栏仍对不上。
+ */
+export function projectOwnsSession(
+  project: ProjectSummary,
+  session: { adapterId: string; adapterSessionId?: string }
+): boolean {
+  const key = session.adapterSessionId?.trim()
+  if (!key) return false
+  const aliases = agentIdAliases(session.adapterId)
+  return project.members.some(
+    (member) =>
+      member.agentSessionKey === key && aliases.includes(member.agentId)
+  )
+}
+
+/** 同一个 CLI 的两种 id。没有别名的只含它自己。 */
+function agentIdAliases(agentId: string): string[] {
+  if (agentId === 'claude' || agentId === 'claude-code') {
+    return ['claude', 'claude-code']
+  }
+  if (agentId === 'cursor' || agentId === 'cursor-agent') {
+    return ['cursor', 'cursor-agent']
+  }
+  return [agentId]
+}
+
 export interface ProjectFilePayload {
   goal: string
   progress: string

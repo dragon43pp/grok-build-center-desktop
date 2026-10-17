@@ -9,7 +9,11 @@ import type {
   ShellOption,
   UpdateSnapshot
 } from '../../shared/ipc-contract'
-import { FEISHU_IDLE_STATUS, REMOTE_DRIVE_IDLE_STATE } from '../../shared/ipc-contract'
+import {
+  FEISHU_IDLE_STATUS,
+  REMOTE_DRIVE_IDLE_STATE,
+  projectOwnsSession
+} from '../../shared/ipc-contract'
 import type { AgentEvent } from '../../shared/agent-events'
 import type {
   DshRuntimeScanReport,
@@ -190,10 +194,9 @@ export default function AppShell() {
     brief: string
     returning: boolean
   } | null>(null)
-  const pendingProjectAssign = useRef<{
-    terminalId?: string
-    projectId: string
-  } | null>(null)
+  // 还没拿到钥匙的终端，等钥匙到了再挂进项目。按终端记，
+  // 取消新建或启动失败时按终端清掉，不会挂到下一个会话上。
+  const pendingProjectAssign = useRef(new Map<string, string>())
   const pendingBridgeLaunches = useRef(new Map<string, PendingBridgeLaunch>())
   const navMode = useSettingsStore((state) => state.navMode)
   const setNavMode = useSettingsStore((state) => state.setNavMode)
@@ -767,6 +770,10 @@ export default function AppShell() {
         }
       })
       setPageId(terminalPage(terminal.id))
+      // 项目页点了「在此项目新建」后，把这个终端记下来，钥匙到了再挂。
+      if (openedProject) {
+        pendingProjectAssign.current.set(terminal.id, openedProject.id)
+      }
       return new Promise<string | null>((resolve) => {
         pendingCliLaunches.current.set(terminal.id, {
           draft: effectiveDraft,
@@ -1161,6 +1168,7 @@ export default function AppShell() {
       pendingCliLaunches.current.delete(terminalId)
 
       if (error) {
+        pendingProjectAssign.current.delete(terminalId)
         closeTerminal(terminalId)
         const previousTerminalId = terminalIdFromPage(pending.previousPage)
         const previousPageStillExists =
@@ -1421,13 +1429,7 @@ export default function AppShell() {
 
   const beginHandoff = useCallback(
     (session: SessionEntry): void => {
-      const project = projects.find((item) =>
-        item.members.some(
-          (member) =>
-            member.agentId === session.adapterId &&
-            member.agentSessionKey === session.adapterSessionId
-        )
-      )
+      const project = projects.find((item) => projectOwnsSession(item, session))
       if (!project || !session.adapterSessionId) return
       const target =
         cliReport?.launchable.find((item) => item.definition.id !== 'dsh') ?? null
@@ -1451,13 +1453,7 @@ export default function AppShell() {
 
   const beginHandBack = useCallback(
     (session: SessionEntry): void => {
-      const project = projects.find((item) =>
-        item.members.some(
-          (member) =>
-            member.agentId === session.adapterId &&
-            member.agentSessionKey === session.adapterSessionId
-        )
-      )
+      const project = projects.find((item) => projectOwnsSession(item, session))
       if (!project) return
       setHandoffDraft({
         session,
@@ -1475,7 +1471,9 @@ export default function AppShell() {
     if (!draft) return
     const option =
       cliReport?.launchable.find(
-        (item) => item.definition.id === draft.agentId
+        (item) =>
+          item.definition.id === draft.agentId ||
+          item.definition.adapterId === draft.agentId
       ) ?? null
     const installation = option?.installations[0]
     const cwd =
@@ -1535,26 +1533,24 @@ export default function AppShell() {
       if (error) return
       const terminalId = useTerminalsStore.getState().activeTerminalId
       if (terminalId) {
-        pendingProjectAssign.current = { terminalId, projectId: draft.projectId }
+        pendingProjectAssign.current.set(terminalId, draft.projectId)
       }
     })
   }, [cliReport, handoffDraft, launchCli])
 
   useEffect(() => {
-    const pending = pendingProjectAssign.current
-    if (!pending) return
-    const started = sessions.find(
-      (session) =>
-        session.adapterSessionId &&
-        (pending.terminalId
-          ? session.terminalId === pending.terminalId
-          : session.terminalId === useTerminalsStore.getState().activeTerminalId)
-    )
-    if (!started?.adapterSessionId) return
-    pendingProjectAssign.current = null
-    void window.sessionsApi
-      .assignProject(pending.projectId, started.adapterId, started.adapterSessionId)
-      .then(() => refreshProjects())
+    const waiting = pendingProjectAssign.current
+    if (waiting.size === 0) return
+    for (const [terminalId, projectId] of waiting) {
+      const started = sessions.find(
+        (session) => session.terminalId === terminalId && session.adapterSessionId
+      )
+      if (!started?.adapterSessionId) continue
+      waiting.delete(terminalId)
+      void window.sessionsApi
+        .assignProject(projectId, started.adapterId, started.adapterSessionId)
+        .then(() => refreshProjects())
+    }
   }, [refreshProjects, sessions])
 
   useEffect(() => {
@@ -1926,7 +1922,6 @@ export default function AppShell() {
                     onClick={() => {
                       const project = projects.find((item) => item.id === openedProject.id)
                       if (!project) return
-                      pendingProjectAssign.current = { projectId: project.id }
                       setNewSessionIntent({ kind: 'sheet', workspace: project.cwd })
                       setNewSessionOpen(true)
                     }}

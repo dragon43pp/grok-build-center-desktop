@@ -8,6 +8,32 @@
 
 ## [Unreleased]
 
+## [1.0.17] - 2026-10-18
+
+新建的会话能进项目了。以前挂进去也对不上，侧栏里永远落在所有项目之外。
+
+### 修复
+
+- **会话钥匙补进投影。** 项目归属靠 CLI 的会话钥匙比对，而这把钥匙只进了账本，投影里没有。观察器捕获到钥匙时同步写进投影，应用重启接管仍在跑的会话时从账本补回。
+- **Claude 和 Cursor 的两种 id 都认。** 成员关系存的是 definition id（claude），会话投影带的是 adapter id（claude-code），其余 CLI 两个 id 相同。侧栏分组、搜索、菜单和交接统一走 `projectOwnsSession`，两种写法都算同一个 CLI。
+- **交回能找到 Claude。** 交回时用 adapter id 去找要启动的 CLI，清单按 definition id 索引，Claude 匹配失败后静默不做。现在两种 id 都能命中。
+- **折叠项目不再把项目标题一起藏掉。** 标题和会话画在同一个列表项里，折叠时整项隐藏，项目从侧栏消失，没有入口再展开。现在只藏会话。
+- **取消新建不再把下一个会话挂进项目。** 待挂的项目改成按终端记录，启动失败或关掉新建面板时按终端清掉。
+
+---
+
+### English
+
+A newly created session lands in its project. It used to be assigned and still fail to match, so the sidebar left it outside every project.
+
+### Fixed
+
+- **The session key reaches the projection.** Project membership is matched on the CLI's session key, and that key only ever reached the ledger. The observer now writes a captured key into the projection as well, and a session adopted on restart picks its key back up from the ledger.
+- **Both ids of Claude and Cursor count.** Membership stores the definition id (`claude`) while the session projection carries the adapter id (`claude-code`); every other CLI uses the same string for both. Sidebar grouping, search, the context menu and handoff all go through `projectOwnsSession`, which treats the two spellings as one CLI.
+- **Handing back finds Claude.** Handing back looked up the CLI to launch by adapter id against a catalog indexed by definition id, so Claude missed and the handoff silently did nothing. Either id now matches.
+- **Collapsing a project no longer hides its heading.** The heading and its sessions were drawn in one list item, so collapsing hid the whole item and the project vanished from the sidebar with no way back. Only the sessions are hidden now.
+- **Cancelling a new session no longer assigns the next one.** A pending project assignment is recorded per terminal and cleared per terminal when the launch fails or the new-session panel closes.
+
 ## [1.0.16] - 2026-10-17
 
 账本加固，历史标题有了第二个来源，长时间不响应的会话会被标成崩溃，Grok 的子会话能认回它的父会话。文件写入前开始留底，但还不能回退。

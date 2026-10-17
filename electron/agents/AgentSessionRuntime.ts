@@ -1086,6 +1086,9 @@ export class AgentSessionRuntime {
         lastActivityAt: now
       })
       projection.observerHealth = 'lifecycle-only'
+      // 重启后的会话不再走 observer 捕获，钥匙只在账本里。
+      // 不补上它，侧栏会把已经在项目里的会话排到项目外面。
+      if (row.agentSessionKey) projection.adapterSessionId = row.agentSessionKey
       const session: ActiveAgentSession = {
         sessionId: row.id,
         terminalId: row.terminalId,
@@ -1271,6 +1274,14 @@ export class AgentSessionRuntime {
     const capturedKey = normalized.agentSessionKey?.trim()
     if (capturedKey) {
       this.deps.ledger?.captureKey(session.sessionId, capturedKey)
+      // 侧栏按这把钥匙把会话归进项目。不写进投影，项目里新建的会话
+      // 永远对不上成员关系，只能落在最下面。
+      if (!session.projection.adapterSessionId) {
+        session.projection = {
+          ...session.projection,
+          adapterSessionId: capturedKey
+        }
+      }
       // 钥匙刚到时，把用户已经改过的名字补进名字表。
       const remembered = this.deps.ledger?.lookupName(session.adapterId, capturedKey)
       const current = session.name.trim()
