@@ -340,6 +340,13 @@ const sessionsApi: SessionsApi = {
       agentId,
       agentSessionKey
     }),
+  unassignProject: (agentId: string, agentSessionKey: string) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.UnassignProject, {
+      agentId,
+      agentSessionKey
+    }),
+  deleteProject: (id: string) =>
+    ipcRenderer.invoke(SessionsInvokeChannel.DeleteProject, id),
   noteProject: (id: string, line: string) =>
     ipcRenderer.invoke(SessionsInvokeChannel.NoteProject, { id, line })
 }

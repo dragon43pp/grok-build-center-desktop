@@ -965,7 +965,11 @@ export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
     const project = ctx.projects.get(id)
     if (!project) return null
     const file = ctx.projects.readFile(project)
-    return { goal: file.goal, progress: file.progress }
+    return {
+      goal: file.goal,
+      progress: file.progress,
+      agents: ctx.projects.readAgents(project.cwd)
+    }
   })
 
   ipcMain.handle(SessionsInvokeChannel.SaveProject, (event, payload: unknown) => {
@@ -987,7 +991,13 @@ export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
       progress: raw.file.progress.slice(0, 8000),
       rest: existing.rest
     })
-    return saved ? { goal: saved.goal, progress: saved.progress } : null
+    return saved
+      ? {
+          goal: saved.goal,
+          progress: saved.progress,
+          agents: ctx.projects.readAgents(current.cwd)
+        }
+      : null
   })
 
   ipcMain.handle(SessionsInvokeChannel.AssignProject, (event, payload: unknown) => {
@@ -1006,6 +1016,25 @@ export function registerIpc(manager: PtyHostClient, ctx: IpcContext): void {
       return
     }
     ctx.projects.assign(raw.projectId, raw.agentId, raw.agentSessionKey)
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.UnassignProject, (event, payload: unknown) => {
+    requireMainWindow(event, ctx)
+    const raw = payload as { agentId?: unknown; agentSessionKey?: unknown }
+    if (
+      !ctx.projects ||
+      typeof raw?.agentId !== 'string' ||
+      typeof raw.agentSessionKey !== 'string'
+    ) {
+      return
+    }
+    ctx.projects.unassign(raw.agentId, raw.agentSessionKey)
+  })
+
+  ipcMain.handle(SessionsInvokeChannel.DeleteProject, (event, id: unknown) => {
+    requireMainWindow(event, ctx)
+    if (!ctx.projects || typeof id !== 'string') return false
+    return ctx.projects.delete(id)
   })
 
   ipcMain.handle(SessionsInvokeChannel.NoteProject, (event, payload: unknown) => {

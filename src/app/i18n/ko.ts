@@ -58,8 +58,13 @@ export const ko = {
     projectPickDirectory: '홈 디렉터리 선택',
     projectDirectoryEmpty: '홈 디렉터리를 아직 고르지 않음',
     projectCreateFailed: '프로젝트를 만들지 못했습니다. 다시 시도하세요.',
+    projectAgents: '팀 약속 (AGENTS.md, 읽기 전용)',
     newSessionInProject: '이 프로젝트에서 세션 만들기',
     moveToProject: (name: string) => `「${name}」에 넣기`,
+    removeFromProject: '프로젝트에서 빼기',
+    deleteProject: '프로젝트 삭제',
+    deleteProjectConfirm: (name: string) =>
+      `프로젝트「${name}」을 삭제할까요? 목표와 진행도 함께 지워지며, 안에 있던 세션은 영향받지 않습니다.`,
     handoff: '다른 도우미에게 넘기기',
     handBack: '돌려주기',
     findProject: '프로젝트 또는 세션 찾기',

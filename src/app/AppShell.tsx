@@ -178,8 +178,11 @@ export default function AppShell() {
     cwd: string
     defaultName: string
   } | null>(null)
-  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
-  const [projectFile, setProjectFile] = useState<ProjectFilePayload | null>(null)
+  // 打开的项目和它读出来的笔记绑在一起：只留一份状态，回首页时一起清掉。
+  const [openedProject, setOpenedProject] = useState<{
+    id: string
+    file: ProjectFilePayload
+  } | null>(null)
   const [handoffDraft, setHandoffDraft] = useState<{
     session: SessionEntry
     projectId: string
@@ -499,6 +502,8 @@ export default function AppShell() {
       if (terminalId && terminalIds.has(terminalId)) {
         activateTerminal(terminalId)
       }
+      // 回首页就是首页：没这项清空，项目页会一直占着 home 位，再也回不到起始页。
+      if (destination === 'home') setOpenedProject(null)
       setPageId(destination)
     },
     [activateTerminal, terminalIds]
@@ -1304,8 +1309,8 @@ export default function AppShell() {
 
   const openProject = useCallback((projectId: string): void => {
     void window.sessionsApi.readProject(projectId).then((file) => {
-      setOpenProjectId(projectId)
-      setProjectFile(file)
+      if (!file) return
+      setOpenedProject({ id: projectId, file })
       setPageId('home')
     })
   }, [])
@@ -1382,7 +1387,32 @@ export default function AppShell() {
   const saveOpenProject = useCallback(
     (projectId: string, file: ProjectFilePayload): void => {
       void window.sessionsApi.saveProject(projectId, file).then((saved) => {
-        if (saved) setProjectFile(saved)
+        if (saved) {
+          setOpenedProject((current) =>
+            current?.id === projectId ? { id: projectId, file: saved } : current
+          )
+        }
+        refreshProjects()
+      })
+    },
+    [refreshProjects]
+  )
+
+  const unassignProject = useCallback(
+    (session: SessionEntry): void => {
+      if (!session.adapterSessionId) return
+      void window.sessionsApi
+        .unassignProject(session.adapterId, session.adapterSessionId)
+        .then(() => refreshProjects())
+    },
+    [refreshProjects]
+  )
+
+  const deleteProject = useCallback(
+    (projectId: string): void => {
+      void window.sessionsApi.deleteProject(projectId).then((ok) => {
+        if (!ok) return
+        setOpenedProject((current) => (current?.id === projectId ? null : current))
         refreshProjects()
       })
     },
@@ -1628,6 +1658,7 @@ export default function AppShell() {
                 onCreateProject={createProjectFor}
                 onNewProject={startBlankProject}
                 onAssignProject={assignProject}
+                onUnassignProject={unassignProject}
                 onHandoff={beginHandoff}
                 onHandBack={beginHandBack}
               />
@@ -1840,17 +1871,20 @@ export default function AppShell() {
           }`}
         >
           <div className="relative min-h-0 flex-1 overflow-hidden">
-            {pageId === 'home' && projectFile && (
+            {pageId === 'home' && openedProject && (
               <section data-testid="project-editor" className="flex h-full flex-col gap-3 overflow-y-auto p-6">
                 <h1 className="font-pingfang text-[18px] font-semibold text-text-primary">
-                  {projects.find((project) => project.id === openProjectId)?.name ?? '项目'}
+                  {projects.find((project) => project.id === openedProject.id)?.name ?? '项目'}
                 </h1>
                 <label className="font-pingfang text-[12px] text-text-muted">
                   目标
                   <textarea
-                    value={projectFile.goal}
+                    value={openedProject.file.goal}
                     onChange={(event) =>
-                      setProjectFile({ ...projectFile, goal: event.target.value })
+                      setOpenedProject({
+                        id: openedProject.id,
+                        file: { ...openedProject.file, goal: event.target.value }
+                      })
                     }
                     className="mt-1 h-24 w-full rounded-lg border border-border-default bg-content p-2 text-[12px] text-text-primary"
                   />
@@ -1858,19 +1892,30 @@ export default function AppShell() {
                 <label className="font-pingfang text-[12px] text-text-muted">
                   进展
                   <textarea
-                    value={projectFile.progress}
+                    value={openedProject.file.progress}
                     onChange={(event) =>
-                      setProjectFile({ ...projectFile, progress: event.target.value })
+                      setOpenedProject({
+                        id: openedProject.id,
+                        file: { ...openedProject.file, progress: event.target.value }
+                      })
                     }
                     className="mt-1 h-40 w-full rounded-lg border border-border-default bg-content p-2 text-[12px] text-text-primary"
                   />
                 </label>
+                {openedProject.file.agents ? (
+                  <section className="rounded-lg border border-border-default p-3">
+                    <h2 className="font-pingfang text-[12px] text-text-muted">
+                      {strings.navigation.projectAgents}
+                    </h2>
+                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-pingfang text-[12px] leading-5 text-text-secondary">
+                      {openedProject.file.agents}
+                    </pre>
+                  </section>
+                ) : null}
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (openProjectId) saveOpenProject(openProjectId, projectFile)
-                    }}
+                    onClick={() => saveOpenProject(openedProject.id, openedProject.file)}
                     className="w-fit rounded-lg bg-button-primary px-3 py-1.5 font-pingfang text-[12px] text-button-primary-fg"
                   >
                     保存
@@ -1879,7 +1924,7 @@ export default function AppShell() {
                     type="button"
                     data-testid="project-new-session"
                     onClick={() => {
-                      const project = projects.find((item) => item.id === openProjectId)
+                      const project = projects.find((item) => item.id === openedProject.id)
                       if (!project) return
                       pendingProjectAssign.current = { projectId: project.id }
                       setNewSessionIntent({ kind: 'sheet', workspace: project.cwd })
@@ -1889,10 +1934,23 @@ export default function AppShell() {
                   >
                     {strings.navigation.newSessionInProject}
                   </button>
+                  <button
+                    type="button"
+                    data-testid="project-delete"
+                    onClick={() => {
+                      const name =
+                        projects.find((project) => project.id === openedProject.id)?.name ?? ''
+                      if (!window.confirm(strings.navigation.deleteProjectConfirm(name))) return
+                      deleteProject(openedProject.id)
+                    }}
+                    className="ml-auto w-fit rounded-lg border border-border-default px-3 py-1.5 font-pingfang text-[12px] text-text-secondary"
+                  >
+                    {strings.navigation.deleteProject}
+                  </button>
                 </div>
               </section>
             )}
-            {pageId === 'home' && !projectFile && (
+            {pageId === 'home' && !openedProject && (
               <HomePage
                 sessions={sessions}
                 shells={shells}

@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, join, posix } from 'node:path'
 import type { ObserverCapabilities } from '../../../../shared/agent-events'
 import { HookDropPoller } from '../../../hooks/HookDropPoller'
+import type { HookIngress, HookRoute } from '../../../hooks/HookIngress'
 import type {
   AgentObserverAdapter,
   ObserverHandle,
@@ -12,6 +13,7 @@ import type {
   PreparedObserver
 } from '../types'
 import { ADAPTER_COMMAND_TIMEOUT_MS } from '../adapterTimeouts'
+import { killProcessTree } from '../processTreeKill'
 import { ThinkingCaptionClock } from '../ThinkingCaptionClock'
 import { wslRuntimeCommand } from '../wslRuntimeCommand'
 import {
@@ -48,6 +50,7 @@ export type GrokCommandRunner = (
 export interface GrokObserverAdapterOptions {
   runCommand?: GrokCommandRunner
   pollIntervalMs?: number
+  hookIngress?: HookIngress
 }
 
 function defaultRunCommand(
@@ -55,16 +58,18 @@ function defaultRunCommand(
   args: readonly string[]
 ): Promise<GrokCommandResult> {
   return new Promise((resolve) => {
-    execFile(
+    let timedOut = false
+    // 不用 execFile 自带的 timeout：它只杀直接子进程，wsl.exe 下面的孙进程会活下来。
+    const child = execFile(
       file,
       [...args],
       {
         encoding: 'utf8',
-        timeout: ADAPTER_COMMAND_TIMEOUT_MS,
         maxBuffer: 256 * 1024,
         windowsHide: true
       },
       (error, stdout, stderr) => {
+        clearTimeout(timer)
         const failure = error as
           | (NodeJS.ErrnoException & {
               code?: string | number
@@ -75,10 +80,14 @@ function defaultRunCommand(
           code: typeof failure?.code === 'number' ? failure.code : error ? null : 0,
           stdout: String(stdout ?? ''),
           stderr: String(stderr ?? ''),
-          timedOut: Boolean(failure?.killed)
+          timedOut: timedOut || Boolean(failure?.killed)
         })
       }
     )
+    const timer = setTimeout(() => {
+      timedOut = true
+      killProcessTree(child)
+    }, ADAPTER_COMMAND_TIMEOUT_MS)
   })
 }
 
@@ -198,10 +207,12 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
   readonly capabilities = GROK_HOOK_CAPABILITIES
   private readonly runCommand: GrokCommandRunner
   private readonly pollIntervalMs: number
+  private readonly hookIngress: HookIngress | null
 
   constructor(options: GrokObserverAdapterOptions = {}) {
     this.runCommand = options.runCommand ?? defaultRunCommand
     this.pollIntervalMs = options.pollIntervalMs ?? 300
+    this.hookIngress = options.hookIngress ?? null
   }
 
   supports(context: ObserverPreparationContext): boolean {
@@ -286,6 +297,7 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
       }
     }
 
+    const hookRoute = await this.openHookRoute(context)
     let attachedHandle: ObserverHandle | null = null
     let disposed = false
     const dispose = async (): Promise<void> => {
@@ -293,6 +305,7 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
       disposed = true
       await attachedHandle?.dispose().catch(() => {})
       attachedHandle = null
+      await hookRoute?.dispose().catch(() => {})
       await Promise.allSettled([
         rm(dropDir, { recursive: true, force: true }),
         rm(posixBridge, { force: true }),
@@ -306,7 +319,8 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
           ASC_GROK_HOOK_DROP: runtimePaths.dropDir,
           ASC_GROK_HOOK_BRIDGE: runtimePaths.posixBridge,
           ASC_GROK_HOOK_BRIDGE_WINDOWS: runtimePaths.windowsBridge,
-          ASC_GROK_HOOK_SCHEMA: GROK_HOOK_SCHEMA
+          ASC_GROK_HOOK_SCHEMA: GROK_HOOK_SCHEMA,
+          ...(hookRoute ? { ASC_GROK_HOOK_URL: hookRoute.url } : {})
         }
       },
       capabilities: GROK_HOOK_CAPABILITIES,
@@ -335,16 +349,14 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
           }
           emit(event)
         }
-        const poller = new HookDropPoller(
-          dropDir,
-          (payload) => {
-            const fact = parseGrokHook(payload)
-            if (!fact) return
-            for (const event of projector.project(fact)) emitProjected(event)
-          },
-          this.pollIntervalMs
-        )
+        const pump = (payload: unknown): void => {
+          const fact = parseGrokHook(payload)
+          if (!fact) return
+          for (const event of projector.project(fact)) emitProjected(event)
+        }
+        const poller = new HookDropPoller(dropDir, pump, this.pollIntervalMs)
         poller.start()
+        const unsubscribe = hookRoute?.subscribe(pump)
         let handleDisposed = false
         const handle: ObserverHandle = {
           capabilities: GROK_HOOK_CAPABILITIES,
@@ -352,6 +364,7 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
             if (handleDisposed) return
             handleDisposed = true
             thinkingClock.stop()
+            unsubscribe?.()
             await poller.dispose()
           }
         }
@@ -359,6 +372,22 @@ export class GrokObserverAdapter implements AgentObserverAdapter {
         return handle
       },
       dispose
+    }
+  }
+
+  /**
+   * Windows 垫片会把事件用 curl 直接 POST 到 loopback HookIngress，省掉一次性
+   * 解释器启动；WSL 会话的钩子跑在发行版内，127.0.0.1 不通宿主，继续走 drop 文件。
+   */
+  private async openHookRoute(
+    context: ObserverPreparationContext
+  ): Promise<HookRoute | null> {
+    if (!this.hookIngress || context.platform !== 'win32') return null
+    if (context.installation.runtime.kind === 'wsl') return null
+    try {
+      return await this.hookIngress.register(context.sessionId, this.id)
+    } catch {
+      return null
     }
   }
 

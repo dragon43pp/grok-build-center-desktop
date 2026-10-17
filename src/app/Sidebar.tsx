@@ -52,6 +52,7 @@ interface SidebarProps {
   onCreateProject: (session: SessionEntry) => void
   onNewProject: () => void
   onAssignProject: (session: SessionEntry, projectId: string) => void
+  onUnassignProject: (session: SessionEntry) => void
   onHandoff: (session: SessionEntry) => void
   onHandBack: (session: SessionEntry) => void
 }
@@ -108,6 +109,7 @@ export default function Sidebar({
   onCreateProject,
   onNewProject,
   onAssignProject,
+  onUnassignProject,
   onHandoff,
   onHandBack
 }: SidebarProps) {
@@ -763,6 +765,26 @@ export default function Sidebar({
                   {strings.navigation.moveToProject(project.name)}
                 </button>
               ))}
+              {projects.some((project) =>
+                project.members.some(
+                  (member) =>
+                    member.agentId === menuSession.adapterId &&
+                    member.agentSessionKey === menuSession.adapterSessionId
+                )
+              ) && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="sidebar-session-unassign-project"
+                  onClick={() => {
+                    setSessionMenu(null)
+                    onUnassignProject(menuSession)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-pingfang text-[11px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  {strings.navigation.removeFromProject}
+                </button>
+              )}
               {projects.some((project) =>
                 project.members.some(
                   (member) =>

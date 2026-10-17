@@ -58,8 +58,13 @@ export const ja = {
     projectPickDirectory: 'ホームディレクトリを選ぶ',
     projectDirectoryEmpty: 'ホームディレクトリ未選択',
     projectCreateFailed: 'プロジェクトを作成できませんでした。もう一度試してください。',
+    projectAgents: 'チームの取り決め（AGENTS.md、読み取り専用）',
     newSessionInProject: 'このプロジェクトでセッションを作成',
     moveToProject: (name: string) => `「${name}」に入れる`,
+    removeFromProject: 'プロジェクトから外す',
+    deleteProject: 'プロジェクトを削除',
+    deleteProjectConfirm: (name: string) =>
+      `プロジェクト「${name}」を削除しますか。目標と進捗も消えます。中のセッションは影響を受けません。`,
     handoff: '別の助手に渡す',
     handBack: '戻す',
     findProject: 'プロジェクトまたはセッションを検索',

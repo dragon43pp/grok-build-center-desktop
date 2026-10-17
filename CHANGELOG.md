@@ -8,6 +8,44 @@
 
 ## [Unreleased]
 
+## [1.0.15] - 2026-10-17
+
+目标和进展留在本机，不再写进项目仓库；钩子不再为每个事件起一整层 PowerShell；项目能进也能出。
+
+### 变更
+
+- **个人记录不进仓库。** 新建项目不再往主目录写 `PROJECT.md`。目标和交接进展写在应用数据目录。已经写进仓库、且没有额外段落的旧文件，打开时读入本机后删掉。带额外段落的旧文件留在原地，之后不再改它。
+- **团队约定只读。** 主目录根上有 `AGENTS.md` 时，项目页会显示它。应用不改这个文件。
+- **钩子不再每次都起一整层 PowerShell。** Windows 上 Grok 和 Kimi 的全局钩子改成调用同目录的垫片脚本，事件直接 POST 到应用内的本机入口；非本应用启动的会话在第一行就退出，不再为每个事件付一次解释器启动。实测空闲事件约 30 ms、投递约 50↔70 ms；改动前每个事件都要起一次解释器。
+- **钩子有硬超时，超时连树杀掉。** 回落写文件的那条路径自带 1.5 秒预算和单实例锁：上一次没跑完就直接跳过，不会再堆一串等不到输入的 PowerShell。应用侧命令超时也改成杀整棵进程树，不再留下孤儿进程。
+- **只有本应用启动的会话才投递。** 事件入口只在保存会话进行中有效，会话结束即失效，不常驻端口。
+
+### 修复
+
+- **打开过项目后还能回到首页。** 项目页以前占住首页位置不放，点「首页」也回不到起始页，只能重启。现在离开项目就交还首页。
+- **会话能移出项目。** 侧栏会话菜单新增「移出项目」，移出后会话本身不受影响。
+- **项目能删除。** 项目页新增「删除项目」。删除会同时清掉成员关系与目标/进展记录，里面的会话不受影响。
+
+---
+
+### English
+
+The goal and progress stay on this machine. They are no longer written into the project folder. Hooks no longer start a full PowerShell per event, and a project can be left as well as joined.
+
+### Changed
+
+- **Personal notes stay out of the repository.** Creating a project no longer writes `PROJECT.md` into the home directory. The goal and handoff progress live in the app data directory. An old file that we wrote, with no extra sections, is read in and removed. A file with extra sections is left in place and not edited again.
+- **Team notes are read-only.** When the home directory has `AGENTS.md`, the project page shows it. The app does not change that file.
+- **Hooks no longer start a full PowerShell on every event.** On Windows, the Grok and Kimi global hooks call a small shim next to the hook file and POST events to the app's loopback ingress. Sessions not launched by this app exit on the first line instead of paying for an interpreter per event. Measured about 30 ms for an idle event and 50–70 ms per delivered event; before this, every event started an interpreter.
+- **Hooks have a hard timeout and kill the process tree.** The file-drop fallback carries its own 1.5 s budget and a single-instance lock, so a slow observer is skipped rather than stacked. Command timeouts on the app side now kill the whole tree instead of leaving orphans.
+- **Delivery is scoped to app-launched sessions.** The ingress route lives only for the lifetime of its session.
+
+### Fixed
+
+- **The home page is reachable after opening a project.** The project page used to hold the home slot permanently, so Home did nothing until a restart. Leaving a project now returns the slot.
+- **A session can leave a project.** The sidebar session menu has Remove from project. The session itself is untouched.
+- **A project can be deleted.** The project page has Delete project. Deleting clears the memberships and the goal/progress record; sessions inside it are not affected.
+
 ## [1.0.14] - 2026-10-17
 
 安装时可以选择目录，首次安装默认到 D 盘。

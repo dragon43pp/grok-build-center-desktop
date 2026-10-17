@@ -218,8 +218,8 @@ observerRegistry.register(new ClaudeObserverAdapter(hookIngress))
 observerRegistry.register(new OpenCodeObserverAdapter())
 observerRegistry.register(new CodexObserverAdapter())
 observerRegistry.register(new PiObserverAdapter())
-observerRegistry.register(new KimiObserverAdapter())
-observerRegistry.register(new GrokObserverAdapter())
+observerRegistry.register(new KimiObserverAdapter({ hookIngress }))
+observerRegistry.register(new GrokObserverAdapter({ hookIngress }))
 observerRegistry.register(new FixtureObserverAdapter())
 let sessionLedger: SessionLedger | undefined
 let taskLedger: TaskLedger | undefined

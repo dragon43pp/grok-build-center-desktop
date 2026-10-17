@@ -1,10 +1,14 @@
 /**
- * 一个项目一份文件。目标由人写，进展由交接补上，人也可以改。
+ * 目标和进展是这个人自己的记录，不进项目仓库。
+ * 团队约定在仓库根的 AGENTS.md，只读，不由这里改写。
  *
- * 文件放在项目目录下，名字固定为 PROJECT.md。只认这两段，其余内容原样留在文件末尾。
+ * PROJECT.md 只用于读旧版本写进仓库的记录，读入本机后不再回写。
  */
 
 export const PROJECT_FILE_NAME = 'PROJECT.md'
+export const AGENTS_FILE_NAME = 'AGENTS.md'
+/** 注入和展示的上限，按字节计，中英文开销大致相当。 */
+export const AGENTS_DOC_MAX_BYTES = 32 * 1024
 
 export interface ProjectFile {
   goal: string

@@ -213,7 +213,7 @@ test.describe('Kimi observer adapter', () => {
       })
       expect(candidate).toContain('# >>> asc:kimi-observer:v1')
       expect(await readFile(configPath, 'utf8')).toBe(original)
-      expect(await readdir(configDir)).toEqual(['config.toml'])
+      expect(await readdir(configDir)).toEqual(['asc-kimi-hook.cmd', 'config.toml'])
     } finally {
       await rm(configDir, { recursive: true, force: true })
     }

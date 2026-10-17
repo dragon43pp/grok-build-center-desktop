@@ -10,6 +10,8 @@ import {
 } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import {
+  KIMI_HOOK_SHIM_FILE_NAME,
+  kimiWindowsHookShimScript,
   mergeKimiManagedHooks,
   type KimiHookPlatform
 } from './KimiHookConfig'
@@ -198,6 +200,32 @@ async function writeCandidate(path: string, content: string): Promise<void> {
   if (process.platform !== 'win32') await chmod(path, 0o600)
 }
 
+/**
+ * 把 Windows 钩子垫片写到 Kimi 配置同目录；内容未变时不动文件。
+ * 垫片自身按环境变量决定空转或投递，因此更换实现不需要重写 config.toml。
+ */
+async function ensureWindowsHookShim(configDir: string): Promise<boolean> {
+  const shimPath = join(configDir, KIMI_HOOK_SHIM_FILE_NAME)
+  const content = kimiWindowsHookShimScript()
+  try {
+    if ((await readFile(shimPath, 'utf8')) === content) return true
+  } catch {
+    // 缺失或不可读时按需重建
+  }
+  const temp = join(
+    configDir,
+    `.${KIMI_HOOK_SHIM_FILE_NAME}.${randomBytes(8).toString('hex')}.tmp`
+  )
+  try {
+    await writeCandidate(temp, content)
+    await rename(temp, shimPath)
+    return true
+  } catch {
+    await rm(temp, { force: true }).catch(() => {})
+    return false
+  }
+}
+
 async function ensureWhileLocked(
   options: EnsureKimiManagedHooksOptions
 ): Promise<EnsureKimiManagedHooksResult> {
@@ -234,6 +262,9 @@ async function ensureWhileLocked(
     DEFAULT_CONCURRENT_EDIT_RETRIES
   )
   try {
+    if (options.platform === 'windows' && !(await ensureWindowsHookShim(configDir))) {
+      return { ok: false, reason: 'kimi-config-write-failed' }
+    }
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       let source: string
       try {
@@ -242,7 +273,13 @@ async function ensureWhileLocked(
         return { ok: false, reason: 'kimi-config-read-failed' }
       }
 
-      const merged = mergeKimiManagedHooks(source, options.platform)
+      const merged = mergeKimiManagedHooks(
+        source,
+        options.platform,
+        options.platform === 'windows'
+          ? join(configDir, KIMI_HOOK_SHIM_FILE_NAME)
+          : undefined
+      )
       if (!merged.ok) return merged
       if (!merged.changed) return { ok: true, changed: false }
 

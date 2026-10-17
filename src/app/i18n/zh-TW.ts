@@ -58,8 +58,13 @@ export const zhTW = {
     projectPickDirectory: '選擇主目錄',
     projectDirectoryEmpty: '還沒選主目錄',
     projectCreateFailed: '專案沒有建立成功，請再試一次。',
+    projectAgents: '團隊約定（AGENTS.md，唯讀）',
     newSessionInProject: '在此專案新增工作階段',
     moveToProject: (name: string) => `歸入「${name}」`,
+    removeFromProject: '移出專案',
+    deleteProject: '刪除專案',
+    deleteProjectConfirm: (name: string) =>
+      `刪除專案「${name}」？目標和進展會一起清掉，裡面的工作階段不受影響。`,
     handoff: '交給其他助手',
     handBack: '交回',
     findProject: '查找專案或工作階段',

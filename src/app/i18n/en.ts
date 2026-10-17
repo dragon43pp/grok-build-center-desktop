@@ -58,8 +58,13 @@ export const en = {
     projectPickDirectory: 'Choose home directory',
     projectDirectoryEmpty: 'No home directory yet',
     projectCreateFailed: 'The project was not created. Try again.',
+    projectAgents: 'Team notes (AGENTS.md, read-only)',
     newSessionInProject: 'New session in this project',
     moveToProject: (name: string) => `Move into “${name}”`,
+    removeFromProject: 'Remove from project',
+    deleteProject: 'Delete project',
+    deleteProjectConfirm: (name: string) =>
+      `Delete the project “${name}”? Its goal and progress are removed too. Sessions inside it are not affected.`,
     handoff: 'Hand off',
     handBack: 'Hand back',
     findProject: 'Find a project or session',

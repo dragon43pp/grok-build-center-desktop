@@ -62,8 +62,13 @@ export const zhCN = {
     projectPickDirectory: '选择主目录',
     projectDirectoryEmpty: '还没选主目录',
     projectCreateFailed: '项目没有创建成功，请再试一次。',
+    projectAgents: '团队约定（AGENTS.md，只读）',
     newSessionInProject: '在此项目新建会话',
     moveToProject: (name: string) => `归入「${name}」`,
+    removeFromProject: '移出项目',
+    deleteProject: '删除项目',
+    deleteProjectConfirm: (name: string) =>
+      `删除项目「${name}」？目标和进展会一起清掉，里面的会话不受影响。`,
     handoff: '交给其他助手',
     handBack: '交回',
     findProject: '查找项目或会话',

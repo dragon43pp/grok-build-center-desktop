@@ -1,10 +1,21 @@
 /**
- * 项目是会话上面的一层。一个目录一份 PROJECT.md，会话按对话钥匙挂进去。
+ * 项目是会话上面的一层。会话按对话钥匙挂进去。
+ * 目标和进展写在本机应用数据里，不进项目仓库。
+ * 仓库根的 AGENTS.md 只读，当作团队约定。
  */
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import {
+  AGENTS_DOC_MAX_BYTES,
+  AGENTS_FILE_NAME,
   appendProgress,
   emptyProjectFile,
   parseProjectFile,
@@ -31,8 +42,8 @@ const NAME_LIMIT = 80
 export class ProjectStore {
   private readonly db: DatabaseSync
 
-  constructor(userDataDir: string) {
-    mkdirSync(userDataDir, { recursive: true })
+  constructor(private readonly userDataDir: string) {
+    mkdirSync(join(userDataDir, 'project-notes'), { recursive: true })
     this.db = new DatabaseSync(join(userDataDir, 'session-ledger.sqlite'))
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (
@@ -74,7 +85,7 @@ export class ProjectStore {
     this.db
       .prepare('INSERT INTO projects (id, name, cwd, updated_at) VALUES (?, ?, ?, ?)')
       .run(record.id, record.name, record.cwd, now)
-    this.writeFile(record, emptyProjectFile())
+    this.writeLocal(record, emptyProjectFile())
     return record
   }
 
@@ -89,28 +100,48 @@ export class ProjectStore {
   }
 
   readFile(project: ProjectRecord): ProjectFile {
+    if (existsSync(notePath(this.userDataDir, project.id))) {
+      return readLocal(this.userDataDir, project.id)
+    }
+    const legacy = readLegacy(project)
+    if (legacy && (legacy.goal || legacy.progress || legacy.rest)) {
+      this.writeLocal(project, { goal: legacy.goal, progress: legacy.progress, rest: '' })
+      removeLegacyIfOurs(project)
+      return { goal: legacy.goal, progress: legacy.progress, rest: '' }
+    }
+    return emptyProjectFile()
+  }
+
+  /** 仓库根的 AGENTS.md。读不到就空字符串，不抛错，也不改文件。 */
+  readAgents(cwd: string): string {
+    if (!cwd.trim()) return ''
     try {
-      return parseProjectFile(readFileSync(filePath(project), 'utf8'))
+      const bytes = readFileSync(join(cwd, AGENTS_FILE_NAME))
+      const truncated = bytes.length > AGENTS_DOC_MAX_BYTES
+      let text = bytes.subarray(0, AGENTS_DOC_MAX_BYTES).toString('utf8')
+      if (truncated) text = text.replace(/\uFFFD+$/, '')
+      text = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim()
+      return truncated && text ? `${text}\n…` : text
     } catch {
-      return emptyProjectFile()
+      return ''
     }
   }
 
-  /** 人改目标或进展。写文件时目标段原样保留调用方给的内容。 */
+  /** 人改目标或进展。只写本机，不碰项目目录。 */
   saveFile(id: string, file: ProjectFile, now = Date.now()): ProjectFile | null {
     const project = this.get(id)
     if (!project) return null
-    this.writeFile(project, file)
+    this.writeLocal(project, file)
     this.touch(id, now)
     return file
   }
 
-  /** 交接、交回、会话结束时补一句进展。不改目标。 */
+  /** 交接、交回、会话结束时补一句进展。不改目标，不写进仓库。 */
   note(id: string, line: string, now = Date.now()): ProjectFile | null {
     const project = this.get(id)
     if (!project) return null
     const next = appendProgress(this.readFile(project), line)
-    this.writeFile(project, next)
+    this.writeLocal(project, next)
     this.touch(id, now)
     return next
   }
@@ -134,6 +165,32 @@ export class ProjectStore {
         'DELETE FROM project_sessions WHERE agent_id = ? AND agent_session_key = ?'
       )
       .run(agentId, key.trim())
+  }
+
+  /**
+   * 删掉一个项目：先摘掉成员，再删项目行，最后删本机笔记。
+   * 成员表没有外键约束，不在这里清就会留下指向空项目的孤儿行。
+   */
+  delete(id: string): boolean {
+    if (!this.get(id)) return false
+    this.db.exec('BEGIN')
+    try {
+      this.db.prepare('DELETE FROM project_sessions WHERE project_id = ?').run(id)
+      this.db.prepare('DELETE FROM projects WHERE id = ?').run(id)
+      this.db.exec('COMMIT')
+    } catch (error) {
+      this.db.exec('ROLLBACK')
+      throw error
+    }
+    const target = notePath(this.userDataDir, id)
+    for (const path of [target, `${target}.tmp`]) {
+      try {
+        unlinkSync(path)
+      } catch {
+        // 笔记删不掉不影响项目已经消失；下次同名项目是新 id，不会读到它。
+      }
+    }
+    return true
   }
 
   membership(agentId: string, key: string): string | null {
@@ -160,22 +217,59 @@ export class ProjectStore {
     }))
   }
 
+  close(): void {
+    this.db.close()
+  }
+
   private touch(id: string, now: number): void {
     this.db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now, id)
   }
 
-  private writeFile(project: ProjectRecord, file: ProjectFile): void {
-    if (!project.cwd.trim()) return
-    mkdirSync(project.cwd, { recursive: true })
-    const target = filePath(project)
+  private writeLocal(project: ProjectRecord, file: ProjectFile): void {
+    const target = notePath(this.userDataDir, project.id)
     const temporary = `${target}.tmp`
     writeFileSync(temporary, renderProjectFile(file), 'utf8')
     renameSync(temporary, target)
   }
 }
 
-function filePath(project: ProjectRecord): string {
+function notePath(userDataDir: string, id: string): string {
+  const safe = id.replace(/[^A-Za-z0-9_-]/g, '')
+  return join(userDataDir, 'project-notes', `${safe || 'project'}.md`)
+}
+
+function readLocal(userDataDir: string, id: string): ProjectFile {
+  try {
+    return parseProjectFile(readFileSync(notePath(userDataDir, id), 'utf8'))
+  } catch {
+    return emptyProjectFile()
+  }
+}
+
+function legacyPath(project: ProjectRecord): string {
   return join(project.cwd, PROJECT_FILE_NAME)
+}
+
+function readLegacy(project: ProjectRecord): ProjectFile | null {
+  if (!project.cwd.trim()) return null
+  try {
+    return parseProjectFile(readFileSync(legacyPath(project), 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+/** 旧文件是我们写的、且没有额外段落时，读入本机后删掉，避免继续留在仓库里。 */
+function removeLegacyIfOurs(project: ProjectRecord): void {
+  try {
+    const source = readFileSync(legacyPath(project), 'utf8')
+    const parsed = parseProjectFile(source)
+    if (parsed.rest.trim()) return
+    if (!source.replace(/^\uFEFF/, '').trimStart().startsWith('# 项目')) return
+    unlinkSync(legacyPath(project))
+  } catch {
+    // 删不掉就留着。之后的写入不再碰它。
+  }
 }
 
 function cleanName(name: string): string {

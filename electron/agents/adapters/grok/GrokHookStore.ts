@@ -2,8 +2,10 @@ import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import {
+  GROK_HOOK_SHIM_FILE_NAME,
   buildGrokManagedHookFile,
   grokHookFileName,
+  grokWindowsHookShimScript,
   isAscGrokHookFile,
   type GrokHookPlatform
 } from './GrokHookConfig'
@@ -47,6 +49,36 @@ export function grokManagedHookPath(grokHome: string): string {
   return join(grokHooksDirectory(grokHome), grokHookFileName())
 }
 
+export function grokHookShimPath(grokHome: string): string {
+  return join(grokHooksDirectory(grokHome), GROK_HOOK_SHIM_FILE_NAME)
+}
+
+/**
+ * Windows 钩子靠同目录的垫片文件承载实际逻辑；内容未变时不重写，
+ * 避免每次 prepare 都动用户磁盘。
+ */
+async function ensureWindowsHookShim(grokHome: string): Promise<boolean> {
+  const shimPath = grokHookShimPath(grokHome)
+  const content = grokWindowsHookShimScript()
+  try {
+    if ((await readFile(shimPath, 'utf8')) === content) return true
+  } catch {
+    // 缺失或不可读时重建
+  }
+  const temp = join(
+    grokHooksDirectory(grokHome),
+    `.${GROK_HOOK_SHIM_FILE_NAME}.${randomBytes(8).toString('hex')}.tmp`
+  )
+  try {
+    await writeFile(temp, content, { encoding: 'utf8', mode: 0o700, flag: 'wx' })
+    await rename(temp, shimPath)
+    return true
+  } catch {
+    await rm(temp, { force: true }).catch(() => {})
+    return false
+  }
+}
+
 export async function ensureGrokManagedHooks(options: {
   grokHome: string
   platform: GrokHookPlatform
@@ -81,6 +113,9 @@ export async function ensureGrokManagedHooks(options: {
         }
       }
       const next = buildGrokManagedHookFile(options.platform)
+      if (options.platform === 'windows' && !(await ensureWindowsHookShim(options.grokHome))) {
+        return { ok: false, reason: 'grok-hook-write-failed' }
+      }
       if (existing === next) return { ok: true, changed: false, path: hookPath }
       const nonce = randomBytes(8).toString('hex')
       const temp = join(

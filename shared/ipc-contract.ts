@@ -337,6 +337,8 @@ export const SessionsInvokeChannel = {
   ReadProject: 'sessions:read-project',
   SaveProject: 'sessions:save-project',
   AssignProject: 'sessions:assign-project',
+  UnassignProject: 'sessions:unassign-project',
+  DeleteProject: 'sessions:delete-project',
   NoteProject: 'sessions:note-project'
 } as const
 
@@ -352,6 +354,8 @@ export interface ProjectSummary {
 export interface ProjectFilePayload {
   goal: string
   progress: string
+  /** 仓库根 AGENTS.md，只读。没有就是空字符串。 */
+  agents: string
 }
 
 export interface SessionsTrashRequest {
@@ -411,6 +415,10 @@ export interface SessionsApi {
     agentId: string,
     agentSessionKey: string
   ) => Promise<void>
+  /** 把会话从它当前所在的项目里摘出来，会话本身不受影响。 */
+  unassignProject: (agentId: string, agentSessionKey: string) => Promise<void>
+  /** 删掉项目：成员关系与目标/进展一起清掉，会话本身不受影响。 */
+  deleteProject: (id: string) => Promise<boolean>
   noteProject: (id: string, line: string) => Promise<void>
 }
 

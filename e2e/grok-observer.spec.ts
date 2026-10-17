@@ -8,11 +8,15 @@ import {
   buildGrokManagedHookFile,
   grokWindowsBridgeScript,
   grokWindowsHookCommand,
+  grokWindowsHookShimScript,
   isAscGrokHookFile
 } from '../electron/agents/adapters/grok/GrokHookConfig'
 import { parseGrokHook } from '../electron/agents/adapters/grok/GrokHookParser'
 import { GrokHookProjector } from '../electron/agents/adapters/grok/GrokHookProjector'
-import { ensureGrokManagedHooks } from '../electron/agents/adapters/grok/GrokHookStore'
+import {
+  ensureGrokManagedHooks,
+  grokHookShimPath
+} from '../electron/agents/adapters/grok/GrokHookStore'
 import { ensureWslGrokManagedHooks } from '../electron/agents/adapters/grok/GrokWslHookStore'
 import { GrokObserverAdapter } from '../electron/agents/adapters/grok/GrokObserverAdapter'
 import { GROK_HOOK_CAPABILITIES } from '../electron/agents/adapters/grok/types'
@@ -42,10 +46,16 @@ test.describe('Grok observer adapter', () => {
       if (!first.ok) return
       expect(first.changed).toBe(true)
       const installed = await readFile(first.path, 'utf8')
-      expect(isAscGrokHookFile(JSON.parse(installed))).toBe(true)
-      expect(installed).toContain('EncodedCommand')
+      const parsed = JSON.parse(installed) as Record<string, unknown>
+      expect(isAscGrokHookFile(parsed)).toBe(true)
+      // Windows 侧只写裸文件名垫片：grok 直接启动它，不再每次事件起一层 pwsh
+      expect(installed).toContain('"command": "asc-grok-hook.cmd"')
+      expect(installed).not.toContain('powershell.exe')
       expect(installed).toContain('"matcher": "permission_prompt"')
       expect(installed).toContain('"timeout": 3')
+      const shim = await readFile(grokHookShimPath(grokHome), 'utf8')
+      expect(shim).toContain('if not defined ASC_GROK_HOOK_BRIDGE_WINDOWS exit /b 0')
+      expect(shim).toContain('curl.exe -s -m 1 --noproxy "*"')
       expect(await readFile(sibling, 'utf8')).toBe('{"hooks":{"SessionStart":[]}}\n')
 
       const again = await ensureGrokManagedHooks({
@@ -91,7 +101,11 @@ test.describe('Grok observer adapter', () => {
       delete env.ASC_GROK_HOOK_BRIDGE_WINDOWS
       delete env.ASC_GROK_HOOK_BRIDGE
       delete env.ASC_GROK_HOOK_DROP
-      const child = spawn(grokWindowsHookCommand(), {
+      delete env.ASC_GROK_HOOK_URL
+      // 实际执行的逻辑在垫片文件里；这里把它落到临时目录，按真实文件名启动
+      const shim = join(runDir, grokWindowsHookCommand())
+      await writeFile(shim, grokWindowsHookShimScript(), 'utf8')
+      const child = spawn(shim, {
         shell: true,
         env,
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -128,13 +142,17 @@ test.describe('Grok observer adapter', () => {
     try {
       await mkdir(dropDir)
       await writeFile(bridge, grokWindowsBridgeScript(), 'utf8')
-      const child = spawn(grokWindowsHookCommand(), {
+      const shim = join(runDir, grokWindowsHookCommand())
+      await writeFile(shim, grokWindowsHookShimScript(), 'utf8')
+      const env = {
+        ...process.env,
+        ASC_GROK_HOOK_DROP: dropDir,
+        ASC_GROK_HOOK_BRIDGE_WINDOWS: bridge
+      }
+      delete env.ASC_GROK_HOOK_URL
+      const child = spawn(shim, {
         shell: true,
-        env: {
-          ...process.env,
-          ASC_GROK_HOOK_DROP: dropDir,
-          ASC_GROK_HOOK_BRIDGE_WINDOWS: bridge
-        },
+        env,
         stdio: ['pipe', 'ignore', 'ignore'],
         windowsHide: true
       })
